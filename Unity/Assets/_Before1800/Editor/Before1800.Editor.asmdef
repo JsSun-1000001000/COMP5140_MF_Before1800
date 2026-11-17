@@ -1,0 +1,6 @@
+{
+  "name": "Before1800.Editor",
+  "references": ["Before1800.Runtime", "Unity.AI.Navigation", "Unity.RenderPipelines.Universal.Runtime"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

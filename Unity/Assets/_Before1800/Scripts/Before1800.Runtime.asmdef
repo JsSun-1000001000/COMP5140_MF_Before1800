@@ -1,0 +1,6 @@
+{
+  "name": "Before1800.Runtime",
+  "rootNamespace": "Before1800",
+  "references": ["Unity.InputSystem", "Unity.AI.Navigation", "Unity.ugui"],
+  "autoReferenced": true
+}

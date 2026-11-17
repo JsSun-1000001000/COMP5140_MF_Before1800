@@ -1,0 +1,43 @@
+{
+  "passed": true,
+  "mode": "TEST_FIXTURE_NOT_LLM",
+  "reason": "Two HTTP fixture rounds and actual A/B camera observation completed.",
+  "state": {
+    "session_id": "914e78cd40124dd4aed72f79729bfbf4",
+    "state_version": 4,
+    "verified_evidence": [
+      "E1"
+    ],
+    "player_discovered": [
+      "E1"
+    ],
+    "narrative_seen": [],
+    "concerns": {
+      "C1": "open",
+      "C2": "open",
+      "C3": "open"
+    },
+    "cooperation_mode": "talking",
+    "escape_agreed": false,
+    "route_confirmed": false,
+    "withdraw_used": false,
+    "proactive_used": false,
+    "elapsed_game_seconds": 31.5627556,
+    "phase": "playing",
+    "player_at_exit": false,
+    "lin_at_exit": false,
+    "active_action_id": null,
+    "last_action_result": {
+      "session_id": "914e78cd40124dd4aed72f79729bfbf4",
+      "action_id": "626a0b57436c4a188e5d2af7e51ef84e",
+      "event_id": "5255bb2a98b54442a700b57257e128f4",
+      "action": "inspect",
+      "target_id": "camera_01",
+      "status": "succeeded",
+      "reason": "Lin observed the camera track his position at two separated points."
+    }
+  },
+  "raw_response": "{\"session_id\":\"914e78cd40124dd4aed72f79729bfbf4\",\"request_id\":\"602057d889734af58420ebc142b99dec\",\"turn_id\":\"585d76c20e214b8ea91a207979e9aa99\",\"state_version\":4,\"decision\":{\"dialogue\":\"[TEST FIXTURE] I saw the camera track me as I moved between the two spots. That suggests monitoring, but does not prove the whole world is fake.\",\"action\":\"reply\",\"target_id\":null,\"concern_id\":null,\"concern_status\":\"keep\",\"basis_turn_id\":null},\"provider\":\"TEST_FIXTURE\",\"model\":\"deterministic-test-not-llm\",\"latency_ms\":3,\"attempts\":1}",
+  "provider": "TEST_FIXTURE",
+  "live_llm_verified": false
+}

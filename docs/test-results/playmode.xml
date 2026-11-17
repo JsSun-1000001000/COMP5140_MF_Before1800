@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="7" result="Passed" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-17 15:26:21Z" end-time="2026-11-17 15:26:41Z" duration="20.1162993">
+  <test-suite type="TestSuite" id="1015" name="Before 18 - E1 Prototype" fullname="Before 18 - E1 Prototype" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-11-17 15:26:21Z" end-time="2026-11-17 15:26:41Z" duration="20.116299" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <test-suite type="Assembly" id="1009" name="Before1800.PlayModeTests.dll" fullname="PROJECT_ROOT/Unity/Library/ScriptAssemblies/Before1800.PlayModeTests.dll" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-11-17 15:26:21Z" end-time="2026-11-17 15:26:41Z" duration="20.111760" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="34888" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <test-suite type="TestSuite" id="1010" name="Before1800" fullname="Before1800" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-11-17 15:26:21Z" end-time="2026-11-17 15:26:41Z" duration="20.111452" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1011" name="Tests" fullname="Before1800.Tests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-11-17 15:26:21Z" end-time="2026-11-17 15:26:41Z" duration="20.111301" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1001" name="E1IntegrationTests" fullname="Before1800.Tests.E1IntegrationTests" classname="Before1800.Tests.E1IntegrationTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-11-17 15:26:21Z" end-time="2026-11-17 15:26:41Z" duration="20.110585" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1004" name="CameraIsDiscoverableThroughActualRaycast" fullname="Before1800.Tests.E1IntegrationTests.CameraIsDiscoverableThroughActualRaycast" methodname="CameraIsDiscoverableThroughActualRaycast" classname="Before1800.Tests.E1IntegrationTests" runstate="Runnable" seed="1324440748" result="Passed" start-time="2026-11-17 15:26:21Z" end-time="2026-11-17 15:26:21Z" duration="0.371255" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1008" name="CancelAndRestartNeverGrantEvidence" fullname="Before1800.Tests.E1IntegrationTests.CancelAndRestartNeverGrantEvidence" methodname="CancelAndRestartNeverGrantEvidence" classname="Before1800.Tests.E1IntegrationTests" runstate="Runnable" seed="43129907" result="Passed" start-time="2026-11-17 15:26:21Z" end-time="2026-11-17 15:26:22Z" duration="0.533488" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1002" name="FixtureTwoRoundsActuallyObserveAndFeedBack" fullname="Before1800.Tests.E1IntegrationTests.FixtureTwoRoundsActuallyObserveAndFeedBack" methodname="FixtureTwoRoundsActuallyObserveAndFeedBack" classname="Before1800.Tests.E1IntegrationTests" runstate="Runnable" seed="1062377126" result="Passed" start-time="2026-11-17 15:26:22Z" end-time="2026-11-17 15:26:29Z" duration="7.164589" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1003" name="KeyboardEventsOpenDialogueMenuAndTrace" fullname="Before1800.Tests.E1IntegrationTests.KeyboardEventsOpenDialogueMenuAndTrace" methodname="KeyboardEventsOpenDialogueMenuAndTrace" classname="Before1800.Tests.E1IntegrationTests" runstate="Runnable" seed="530809607" result="Passed" start-time="2026-11-17 15:26:29Z" end-time="2026-11-17 15:26:29Z" duration="0.214469" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1005" name="OfflineServiceCanRecoverWithoutChangingFacts" fullname="Before1800.Tests.E1IntegrationTests.OfflineServiceCanRecoverWithoutChangingFacts" methodname="OfflineServiceCanRecoverWithoutChangingFacts" classname="Before1800.Tests.E1IntegrationTests" runstate="Runnable" seed="69565649" result="Passed" start-time="2026-11-17 15:26:29Z" end-time="2026-11-17 15:26:30Z" duration="1.180409" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1006" name="OverlappingPointsNeverGrantEvidence" fullname="Before1800.Tests.E1IntegrationTests.OverlappingPointsNeverGrantEvidence" methodname="OverlappingPointsNeverGrantEvidence" classname="Before1800.Tests.E1IntegrationTests" runstate="Runnable" seed="863790222" result="Passed" start-time="2026-11-17 15:26:30Z" end-time="2026-11-17 15:26:30Z" duration="0.165726" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1007" name="StationaryLensNeverGrantsEvidence" fullname="Before1800.Tests.E1IntegrationTests.StationaryLensNeverGrantsEvidence" methodname="StationaryLensNeverGrantsEvidence" classname="Before1800.Tests.E1IntegrationTests" runstate="Runnable" seed="346081359" result="Passed" start-time="2026-11-17 15:26:30Z" end-time="2026-11-17 15:26:41Z" duration="10.473794" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[Saving results to: C:/Users/Ft/AppData/LocalLow/COMP5140/Before 18 - E1 Prototype\TestResults.xml
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>
