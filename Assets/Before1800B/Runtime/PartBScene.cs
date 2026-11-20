@@ -68,6 +68,7 @@ namespace Before1800.PartB
             World.Initialize();
             hud = GetComponent<GreyboxHUD>();
             State = new SessionState();
+            gameObject.AddComponent<PartCDialogue>();
             EnterIntro();
         }
 
@@ -344,6 +345,8 @@ namespace Before1800.PartB
             ApplySimulationGate();
             return true;
         }
+
+        internal bool IsCurrentRequest(ModelRequest request) => request != null && modelRequest == request;
 
         internal bool TrySendPlayerLine(string text, out ModelRequest request)
         {
