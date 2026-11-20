@@ -19,6 +19,7 @@ namespace Before1800.PartB
         [SerializeField] NavMeshData navigationData;
         [SerializeField] Material[] layoutMaterials;
         [SerializeField] bool usesSceneBindings;
+        [SerializeField] SetBackStation setBackStation;
 
         NavMeshDataInstance navigation;
         Transform namePlate;
@@ -51,6 +52,7 @@ namespace Before1800.PartB
         public Camera ViewCamera => view;
         public Transform ObservationPoint => observationPoint;
         public Transform CameraTarget => cameraTarget;
+        public SetBackStation Station => setBackStation && setBackStation.IsAvailable ? setBackStation : null;
         public NavMeshData NavigationData => navigationData;
         public bool UsesSceneBindings => usesSceneBindings;
         // The visual rig can glance toward the current waypoint before the body finishes turning.
@@ -61,6 +63,18 @@ namespace Before1800.PartB
         public bool ObservationBlockedForTest { get; private set; }
         public bool CanReachObservation => initialized && ObservationAvailable &&
             PathTo(observationPoint.position, new NavMeshPath());
+        public bool CanInspect(string targetId)
+        {
+            if (targetId == SessionState.CameraTarget) return CanReachObservation;
+            return initialized && targetId == SessionState.SetBackTarget && Station &&
+                PathTo(Station.ObservationPoint.position, new NavMeshPath());
+        }
+
+        public bool AtObservation(string targetId)
+        {
+            if (targetId == SessionState.CameraTarget) return IsAtObservation;
+            return initialized && targetId == SessionState.SetBackTarget && Station && Station.AtObservation(Lin);
+        }
         bool ObservationAvailable => observationPoint && cameraTarget &&
             observationPoint.gameObject.activeInHierarchy && cameraTarget.gameObject.activeInHierarchy;
 
@@ -157,6 +171,9 @@ namespace Before1800.PartB
             navigation = NavMesh.AddNavMeshData(navigationData);
             if (!navigation.valid)
                 throw new System.InvalidOperationException("Could not register the Part B scene NavMesh.");
+            if (!setBackStation) setBackStation = GetComponentInChildren<SetBackStation>(true);
+            if (!setBackStation && !usesSceneBindings)
+                setBackStation = SetBackStation.BuildGreybox(transform, layoutMaterials, returnPoint);
             openObservationPoint = observationPoint.position;
             namePlate = Lin.Find("Name plate");
             nameLabel = Lin.Find("Lin name");
@@ -167,6 +184,7 @@ namespace Before1800.PartB
         public void ResetWorld()
         {
             SetObservationBlockedForTest(false);
+            if (setBackStation) setBackStation.ResetDoor();
             ResetActor(player, playerStart);
             ResetActor(lin, returnPoint);
             pitch = 0f;
@@ -206,19 +224,36 @@ namespace Before1800.PartB
             FaceNamePlateToPlayer();
         }
 
-        public TravelResult StepInspect(float dt)
+        public TravelResult StepInspect(float dt) => StepInspect(SessionState.CameraTarget, dt);
+
+        public TravelResult StepInspect(string targetId, float dt)
         {
-            if (!ObservationAvailable)
+            Transform goal, focus;
+            if (targetId == SessionState.CameraTarget && ObservationAvailable)
+            {
+                goal = observationPoint;
+                focus = cameraTarget;
+            }
+            else if (targetId == SessionState.SetBackTarget && Station)
+            {
+                goal = Station.ObservationPoint;
+                focus = Station.SetMark;
+            }
+            else
                 return Fail("RC_NAV_NO_PATH");
-            var result = Travel(observationPoint.position, ArrivalRadius, dt);
+            var result = Travel(goal.position, ArrivalRadius, dt);
             if (result != TravelResult.Arrived) return result;
-            if (!Face(cameraTarget.position, dt)) return TravelResult.Moving;
-            return IsAtObservation ? TravelResult.Arrived : Fail("RC_OBSERVATION_BLOCKED");
+            if (!Face(focus.position, dt)) return TravelResult.Moving;
+            return AtObservation(targetId) ? TravelResult.Arrived : Fail("RC_OBSERVATION_BLOCKED");
         }
 
-        public TravelResult StepFollow(float dt)
+        public TravelResult StepFollow(float dt) => StepFollow(dt, false);
+
+        public TravelResult StepFollow(float dt, bool passageAllowed)
         {
-            var result = Travel(Player.position, 1.4f, dt);
+            bool waitAtBoundary = !passageAllowed && Station && Station.InRestrictedArea(Player.position);
+            Vector3 goal = waitAtBoundary ? Station.ObservationPoint.position : Player.position;
+            var result = Travel(goal, waitAtBoundary ? ArrivalRadius : 1.4f, dt, !passageAllowed);
             if (result == TravelResult.Arrived) Face(Player.position, dt);
             return result;
         }
@@ -230,14 +265,18 @@ namespace Before1800.PartB
             return result;
         }
 
-        public TravelResult StepReturn(float dt)
+        public TravelResult StepReturn(float dt) => StepReturn(SessionState.CameraTarget, dt);
+
+        public TravelResult StepReturn(string targetId, float dt)
         {
-            var result = Travel(returnPoint.position, ArrivalRadius, dt);
+            Transform destination = targetId == SessionState.SetBackTarget && Station && Station.ReturnPoint
+                ? Station.ReturnPoint : returnPoint;
+            var result = Travel(destination.position, ArrivalRadius, dt);
             if (result == TravelResult.Arrived && !Face(Player.position, dt)) return TravelResult.Moving;
             return result;
         }
 
-        TravelResult Travel(Vector3 goal, float stoppingDistance, float dt)
+        TravelResult Travel(Vector3 goal, float stoppingDistance, float dt, bool restrictPassage = false)
         {
             if (FailureCode.Length > 0) return TravelResult.Failed;
             bool following = stoppingDistance > ArrivalRadius;
@@ -280,6 +319,12 @@ namespace Before1800.PartB
                 speed = alignment > .5f ? walkingSpeed : 0f;
             }
             var step = Vector3.ClampMagnitude(delta, speed * dt);
+            if (restrictPassage && Station && Station.InRestrictedArea(Lin.position + step))
+            {
+                walkingSpeed = 0f;
+                corners = null;
+                return TravelResult.Arrived;
+            }
             lin.Move(step + Vector3.down * (.9f * dt));
             progress += delta.magnitude - Flat(waypoint - Lin.position).magnitude;
             RemainingDistance = Flat(waypoint - Lin.position).magnitude;

@@ -45,9 +45,13 @@ namespace Before1800.PartB
                 if (Input.GetKeyDown(KeyCode.Alpha3)) scene.SubmitTestAction("inspect");
                 if (Input.GetKeyDown(KeyCode.Alpha4)) scene.SubmitTestAction("withdraw");
                 if (Input.GetKeyDown(KeyCode.Alpha5)) scene.SubmitTestAction("restore");
+                if (Input.GetKeyDown(KeyCode.Alpha6) && scene.World.Station) scene.SubmitTestAction("inspect_set_back");
             }
-            else if (Input.GetKeyDown(KeyCode.V))
-                scene.TestCompleteCamera();
+            else
+            {
+                if (Input.GetKeyDown(KeyCode.F)) scene.InteractWithSetBack();
+                if (Input.GetKeyDown(KeyCode.V)) scene.TestCompleteCamera();
+            }
         }
 
         private void OnGUI()
@@ -133,7 +137,7 @@ namespace Before1800.PartB
         {
             SessionState state = scene.State;
             bool expanded = monitorExpanded && height >= 330f;
-            var card = new Card(12, 12, 276, expanded ? 293 : 70, Mint);
+            var card = new Card(12, 12, 276, expanded ? (scene.World.Station ? 313 : 293) : 70, Mint);
             Rect top = card.Take(19);
             GUI.Label(top, "DEVELOPER MONITOR     [F1]", small);
             Rect time = card.Take(32);
@@ -153,6 +157,7 @@ namespace Before1800.PartB
             Concern(ref card, "C3", "Choice to leave");
             Divider(ref card);
             Pair(ref card, "Cooperation", state.Cooperation.ToString());
+            if (scene.World.Station) Pair(ref card, "Passage checked", state.RouteConfirmed ? "yes" : "no");
             Pair(ref card, "Agreed to escape", state.EscapeAgreed ? "yes" : "no");
         }
 
@@ -183,8 +188,13 @@ namespace Before1800.PartB
         private void DrawStatusStrip(float width, float height, bool exploring)
         {
             string feedback = string.IsNullOrEmpty(scene.Feedback) ? scene.State.LastResult : scene.Feedback;
-            string hint = scene.State.Stage == ActionStage.Arrived && !scene.State.IsPaused
-                ? "Lin is at the observation point.   [V] Send mock E1 experiment completion"
+            string hint = scene.SetBackInteractionHint();
+            if (hint == null && scene.State.Stage == ActionStage.Arrived && !scene.State.IsPaused)
+                hint = scene.State.Active?.TargetId == SessionState.SetBackTarget ?
+                    "At the maintenance door, face its control and press F to help Lin inspect the set." :
+                    "Lin is at the camera.   [V] Send mock E1 experiment completion";
+            if (hint == null) hint = scene.World.Station
+                ? "WASD  Move      E  Talk      F  Use maintenance station      Esc  Menu      F1  Monitor"
                 : "WASD  Move      Mouse  Look      E  Talk to Lin      Esc  Menu      F1  Monitor";
             float feedbackHeight = string.IsNullOrEmpty(feedback) ? 0 :
                 Mathf.Min(48, body.CalcHeight(new GUIContent(feedback), width - 48));
@@ -208,7 +218,8 @@ namespace Before1800.PartB
             bool residenceIntro = scene.IntroOpen && scene.World.UsesSceneBindings;
             string introText = residenceIntro
                 ? "Lin thinks this home is real. You're the actor playing his friend. Help him uncover the set and leave with you before 18:00."
-                : "Ask Lin to check the camera. Watch his arrival, then test the separate experiment result.";
+                : scene.World.Station ? "At the maintenance door, let Lin see how the set was built. Walk behind it yourself to check the passage." :
+                "Ask Lin to check the camera. Watch his arrival, then test the separate experiment result.";
             float introTextHeight = residenceIntro ? Mathf.Max(52, body.CalcHeight(new GUIContent(introText), cardWidth - 28)) : 52;
             float cardHeight = scene.State.TimedOut ? 150 : scene.IntroOpen ? 180 + introTextHeight :
                 scene.MenuOpen ? 306 : fault ? 205 : scene.DialogueOpen ? 297 : 145;
@@ -229,9 +240,11 @@ namespace Before1800.PartB
                 GUI.Label(card.Take(36), "Before 18:00", heading);
                 GUI.Label(card.Take(introTextHeight), introText, body);
                 GUI.Label(card.Take(24), "WASD to move. Mouse to look.", small);
-                GUI.Label(card.Take(24), residenceIntro ? "E talk / resume.   1 follow.   3 inspect camera." :
+                GUI.Label(card.Take(24), scene.World.Station ? "E talk / resume.   3 camera.   6 maintenance door." :
+                    residenceIntro ? "E talk / resume.   1 follow.   3 inspect camera." :
                     "E to talk, 3 to queue the check, E to resume.", small);
-                GUI.Label(card.Take(24), "V sends the mock E1 completion after arrival.", small);
+                GUI.Label(card.Take(24), scene.World.Station ? "F at the door control or passage sign to interact." :
+                    "V sends the mock E1 completion after arrival.", small);
                 if (Click(ref card, "Enter room   [Enter]")) scene.ToggleIntroOff();
             }
             else if (scene.MenuOpen)
@@ -241,7 +254,8 @@ namespace Before1800.PartB
                 if (scene.State.CanRetryReturn && Click(ref card, "Retry return to Lin's starting point")) scene.RetryReturn();
                 if (Click(ref card, scene.TestPathBlocked ? "Test path: BLOCKED   /   Unblock" : "Test path: OPEN   /   Block"))
                     scene.ToggleTestPathBlocked();
-                bool canComplete = scene.State.Stage == ActionStage.Arrived && !scene.DialogueOpen && !scene.ModelWait && !fault;
+                bool canComplete = scene.State.Stage == ActionStage.Arrived && scene.State.Active?.TargetId == SessionState.CameraTarget &&
+                    !scene.DialogueOpen && !scene.ModelWait && !fault;
                 bool enabledBefore = GUI.enabled;
                 GUI.enabled = enabledBefore && canComplete;
                 if (Click(ref card, "Resume + send mock E1 completion"))
@@ -272,7 +286,13 @@ namespace Before1800.PartB
                 Rect row = card.Take(34);
                 if (Half(row, false, "1   Follow me")) scene.SubmitTestAction("follow");
                 if (Half(row, true, "2   Stop here")) scene.SubmitTestAction("stop");
-                if (Click(ref card, "3   Inspect camera_test")) scene.SubmitTestAction("inspect");
+                if (scene.World.Station)
+                {
+                    row = card.Take(34);
+                    if (Half(row, false, "3   Inspect camera")) scene.SubmitTestAction("inspect");
+                    if (Half(row, true, "6   Inspect set")) scene.SubmitTestAction("inspect_set_back");
+                }
+                else if (Click(ref card, "3   Inspect camera_test")) scene.SubmitTestAction("inspect");
                 row = card.Take(34);
                 if (Half(row, false, "4   Withdraw")) scene.SubmitTestAction("withdraw");
                 if (Half(row, true, "5   Restore talk")) scene.SubmitTestAction("restore");

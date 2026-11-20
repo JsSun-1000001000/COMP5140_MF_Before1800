@@ -77,10 +77,11 @@ namespace Before1800.PartB
     public sealed class SessionState
     {
         public const string CameraTarget = "camera_test";
+        public const string SetBackTarget = "set_back";
         public const double DeadlineSeconds = 3600;
 
         private readonly HashSet<PauseToken> pauses = new HashSet<PauseToken>();
-        private readonly HashSet<Guid> cameraEvents = new HashSet<Guid>();
+        private readonly HashSet<Guid> worldEvents = new HashSet<Guid>();
         private readonly HashSet<string> verified = new HashSet<string>();
         private readonly Dictionary<string, bool> concerns = new Dictionary<string, bool>();
         private readonly Queue<ActionResultSnapshot> recentResults = new Queue<ActionResultSnapshot>();
@@ -93,6 +94,7 @@ namespace Before1800.PartB
         public bool TimedOut { get; private set; }
         public bool IsPaused => TimedOut || pauses.Count != 0;
         public bool E1Verified => verified.Contains("E1");
+        public bool E5Verified => verified.Contains("E5");
         public bool EscapeAgreed { get; private set; }
         public bool RouteConfirmed { get; private set; }
         public CooperationMode Cooperation { get; private set; }
@@ -102,7 +104,8 @@ namespace Before1800.PartB
         public ActionStage Stage => Pending != null ? ActionStage.Queued : activeStage;
         public string LastResult { get; private set; }
         public bool CanRetryReturn => failedReturn != null && failedReturn.RunId == RunId &&
-            E1Verified && !TimedOut && Pending == null && Active == null && Cooperation != CooperationMode.Withdrawn;
+            verified.Contains(EvidenceForTarget(failedReturn.TargetId)) && !TimedOut &&
+            Pending == null && Active == null && Cooperation != CooperationMode.Withdrawn;
 
         public string[] VerifiedEvidence
         {
@@ -136,7 +139,7 @@ namespace Before1800.PartB
             Pending = Active = failedReturn = null;
             activeStage = ActionStage.Idle;
             pauses.Clear();
-            cameraEvents.Clear();
+            worldEvents.Clear();
             verified.Clear();
             concerns.Clear();
             recentResults.Clear();
@@ -280,8 +283,9 @@ namespace Before1800.PartB
                     }
                     break;
                 case "inspect":
-                    if (targetId != CameraTarget) return Reject("Unknown inspection target.", out reason);
-                    if (E1Verified) return Reject("Camera already verified.", out reason);
+                    string evidence = EvidenceForTarget(targetId);
+                    if (evidence == null) return Reject("Unknown inspection target.", out reason);
+                    if (verified.Contains(evidence)) return Reject(evidence + " already verified.", out reason);
                     break;
                 case "withdraw":
                     if (targetId != null) return Reject("Withdraw takes no target.", out reason);
@@ -295,20 +299,21 @@ namespace Before1800.PartB
                     return Reject("Unsupported action.", out reason);
             }
 
+            failedReturn = null;
             Pending = new ActionTicket(RunId, action, targetId);
             Commit(action + " queued.");
             reason = LastResult;
             return true;
         }
 
-        // Only the failed return leg can be replayed. The completed camera experiment
+        // Only the failed return leg can be replayed. The completed experiment
         // keeps its original identity while each navigation attempt gets a fresh ticket.
         internal bool TryQueueReturnRetry()
         {
             if (!CanRetryReturn) return false;
             Pending = new ActionTicket(RunId, failedReturn.Action, failedReturn.TargetId, failedReturn);
             failedReturn = null;
-            Commit("Camera return queued for retry.");
+            Commit(Pending.TargetId + " return queued for retry.");
             return true;
         }
 
@@ -334,7 +339,7 @@ namespace Before1800.PartB
                     activeStage = ticket.RecoveryOfActionId == Guid.Empty ? ActionStage.Moving : ActionStage.Returning;
                     break;
             }
-            Commit(activeStage == ActionStage.Returning ? "Retrying camera return." : ticket.Action + " started.");
+            Commit(activeStage == ActionStage.Returning ? "Retrying return from " + ticket.TargetId + "." : ticket.Action + " started.");
             RecordActionResult(ticket, "started", LastResult);
             return true;
         }
@@ -344,7 +349,7 @@ namespace Before1800.PartB
         {
             if (!IsCurrent(ticket) || ticket.Action != "inspect" || activeStage != ActionStage.Moving) return false;
             activeStage = ActionStage.Arrived;
-            Commit("At camera observation point. Waiting for experiment.");
+            Commit("At " + ticket.TargetId + " observation point. Waiting for experiment.");
             RecordActionResult(ticket, "arrived", LastResult);
             return true;
         }
@@ -359,21 +364,52 @@ namespace Before1800.PartB
         // simulates that event. A premature event cannot be replayed after arrival.
         internal bool TryCompleteCameraExperiment(ActionTicket ticket, Guid eventId)
         {
-            if (ticket == null || ticket.RunId != RunId || ticket.ExperimentId == Guid.Empty ||
-                TimedOut || eventId == Guid.Empty || !cameraEvents.Add(eventId)) return false;
-            if (!IsCurrent(ticket) || ticket.Action != "inspect" || ticket.TargetId != CameraTarget ||
-                activeStage != ActionStage.Arrived || !verified.Add("E1")) return false;
+            return TryCompleteInspection(CameraTarget, ticket, eventId);
+        }
+
+        internal bool TryCompleteSetBackExperiment(ActionTicket ticket, Guid eventId)
+        {
+            return TryCompleteInspection(SetBackTarget, ticket, eventId);
+        }
+
+        private bool TryCompleteInspection(string target, ActionTicket ticket, Guid eventId)
+        {
+            if (ticket == null || ticket.RunId != RunId || ticket.Action != "inspect" ||
+                ticket.TargetId != target || ticket.ExperimentId == Guid.Empty || TimedOut ||
+                eventId == Guid.Empty || !worldEvents.Add(eventId)) return false;
+            string evidence = EvidenceForTarget(target);
+            if (!IsCurrent(ticket) || activeStage != ActionStage.Arrived || !verified.Add(evidence)) return false;
             activeStage = ActionStage.Returning;
-            Commit("Camera experiment complete. E1 verified. Returning.");
+            Commit(evidence + " verified. Returning.");
             RecordActionResult(ticket, "verified", LastResult);
             return true;
+        }
+
+        internal bool TryConfirmRoute(Guid runId, Guid eventId)
+        {
+            if (runId != RunId || IsPaused || RouteConfirmed || eventId == Guid.Empty || !worldEvents.Add(eventId))
+                return false;
+            RouteConfirmed = true;
+            Commit("Exit route confirmed.");
+            return true;
+        }
+
+        private static string EvidenceForTarget(string targetId)
+        {
+            switch (targetId)
+            {
+                case CameraTarget: return "E1";
+                case SetBackTarget: return "E5";
+                default: return null;
+            }
         }
 
         internal bool ReportFailure(ActionTicket ticket, string reason)
         {
             if (!IsCurrent(ticket)) return false;
             if (ticket.Action == "follow") Cooperation = CooperationMode.Talking;
-            if (ticket.Action == "inspect" && activeStage == ActionStage.Returning && E1Verified)
+            if (ticket.Action == "inspect" && activeStage == ActionStage.Returning &&
+                verified.Contains(EvidenceForTarget(ticket.TargetId)))
                 failedReturn = ticket;
             Active = null;
             activeStage = ActionStage.Failed;
