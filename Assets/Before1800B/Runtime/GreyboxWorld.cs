@@ -102,6 +102,24 @@ namespace Before1800.PartB
             }
         }
 
+        public bool CanTalkToLin => initialized &&
+            (CanFocus(Lin, Lin.position + Vector3.up * 1.52f, 2.65f, 32f) ||
+             CanFocus(Lin, Lin.position + Vector3.up * 1.20f, 2.65f, 28f));
+
+        // Camera props are small and above eye level. A narrow cone avoids a
+        // pixel-perfect click while the sight ray still respects walls and furniture.
+        public bool CanExamineCamera => initialized && cameraTarget && cameraTarget.gameObject.activeInHierarchy &&
+            (CanDiscoverCamera || CanFocus(cameraTarget, cameraTarget.position, 2.65f, 8f));
+
+        bool CanFocus(Transform target, Vector3 point, float distance, float angle)
+        {
+            Vector3 origin = view.transform.position;
+            Vector3 delta = point - origin;
+            if (!target.gameObject.activeInHierarchy || delta.sqrMagnitude > distance * distance ||
+                Vector3.Angle(view.transform.forward, delta) > angle) return false;
+            return InteractionSight.Clear(origin, delta, Player, target);
+        }
+
         // The residence builder supplies its own room, actors and baked navigation data.
         // All bindings are scene references, so the built player needs no editor assets.
         public void ConfigureScene(CharacterController playerActor, CharacterController linActor, Camera firstPerson,
@@ -409,6 +427,37 @@ namespace Before1800.PartB
             if (navigationData) Destroy(navigationData);
             if (layoutMaterials != null)
                 foreach (var material in layoutMaterials) if (material) Destroy(material);
+        }
+    }
+
+    internal static class InteractionSight
+    {
+        private static readonly RaycastHit[] buffer = new RaycastHit[12];
+
+        internal static bool Clear(Vector3 origin, Vector3 delta, Transform observer, Transform target)
+        {
+            // The eye can sit on the rim of the player's CharacterController. Ignore
+            // that actor only, keeping the nearest wall, prop or intended target.
+            int count = Physics.RaycastNonAlloc(origin, delta.normalized, buffer, delta.magnitude,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            var hits = buffer;
+            if (count == hits.Length)
+            {
+                hits = Physics.RaycastAll(origin, delta.normalized, delta.magnitude,
+                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                count = hits.Length;
+            }
+            float nearest = float.PositiveInfinity;
+            Transform first = null;
+            for (int i = 0; i < count; i++)
+            {
+                var hit = hits[i];
+                var item = hit.collider.transform;
+                if ((observer && item.IsChildOf(observer)) || hit.distance >= nearest) continue;
+                first = item;
+                nearest = hit.distance;
+            }
+            return !first || first.IsChildOf(target);
         }
     }
 }

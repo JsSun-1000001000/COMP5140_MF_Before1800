@@ -14,6 +14,8 @@ namespace Before1800.PartB
         public ulong Version { get; }
         public SessionSnapshot Snapshot { get; }
         internal PauseToken Wait { get; }
+        internal string PlayerReply { get; set; }
+        internal bool IsPlayerRequest { get; set; }
 
         internal ModelRequest(SessionState state)
         {
@@ -34,12 +36,19 @@ namespace Before1800.PartB
         public bool IntroOpen => intro != null;
         public bool DialogueOpen => dialogue != null;
         public bool MenuOpen => menu != null;
+        public bool JournalOpen => journal != null;
+        public bool ObservingSetBack => observingSetBack != null;
+        public bool CheckingRoute => checkingRouteRun != Guid.Empty;
         public bool ModelWait => State.HasPause(PauseReason.ModelWait);
         public bool TestPathBlocked => World.ObservationBlockedForTest;
         public event Action<ActionTicket> ObservationReady;
+        // A dialogue service subscribes on the game's main thread. The same request
+        // must come back with its response (or cancellation) even on retry.
+        public event Action<ModelRequest, string> PlayerLineRequested;
+        public bool HasDialogueService => PlayerLineRequested != null;
 
         private GreyboxHUD hud;
-        private PauseToken intro, dialogue, menu, testWait, navigationError;
+        private PauseToken intro, dialogue, menu, journal, testWait, navigationError;
         private ModelRequest modelRequest;
         private ActionTicket testCompletion;
         private ActionTicket observingSetBack;
@@ -66,7 +75,7 @@ namespace Before1800.PartB
         {
             CancelModelRequest();
             State.Restart();
-            intro = dialogue = menu = testWait = navigationError = null;
+            intro = dialogue = menu = journal = testWait = navigationError = null;
             testCompletion = null;
             ResetSetBackChecks();
             World.ResetWorld();
@@ -233,6 +242,7 @@ namespace Before1800.PartB
             var view = World.ViewCamera.transform;
             if (station.TryOpenDoor(view))
             {
+                State.Discover(SessionState.SetBackTarget);
                 Feedback = "Maintenance door open. Lin can inspect the set.";
                 return;
             }
@@ -329,9 +339,37 @@ namespace Before1800.PartB
         public bool TryBeginModelRequest(out ModelRequest request)
         {
             request = null;
-            if (!DialogueOpen || MenuOpen || ModelWait || navigationError != null || State.TimedOut) return false;
+            if (!DialogueOpen || MenuOpen || JournalOpen || ModelWait || navigationError != null || State.TimedOut) return false;
             request = modelRequest = new ModelRequest(State);
             ApplySimulationGate();
+            return true;
+        }
+
+        internal bool TrySendPlayerLine(string text, out ModelRequest request)
+        {
+            request = null;
+            if (!HasDialogueService || string.IsNullOrWhiteSpace(text) || !TryBeginModelRequest(out request)) return false;
+            request.IsPlayerRequest = true;
+            try { PlayerLineRequested.Invoke(request, text); }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[Before1800B / Dialogue] " + ex.GetType().Name);
+                TryCancelModelRequest(request);
+            }
+            return true;
+        }
+
+        public bool TryReceivePlayerReply(ModelRequest request, string dialogueText, string action, string targetId, out string reason)
+        {
+            reason = "Request expired or empty reply.";
+            if (request == null || request != modelRequest || !request.IsPlayerRequest) return false;
+            if (string.IsNullOrWhiteSpace(dialogueText))
+            {
+                TryCancelModelRequest(request);
+                return false;
+            }
+            if (!TryApplyModelAction(request, action, targetId, out reason)) return false;
+            request.PlayerReply = dialogueText.Trim();
             return true;
         }
 
@@ -372,6 +410,22 @@ namespace Before1800.PartB
                 return false;
             }
             return State.TryQueue(run, version, action, targetId, out reason);
+        }
+
+        internal bool TryPlayerAction(string action, string targetId)
+        {
+            if (!DialogueOpen || MenuOpen || JournalOpen || ModelWait || navigationError != null || State.TimedOut)
+                return false;
+            if (action == "restore") return State.TryRestoreConversation();
+            if (action == "stop") return State.TryQueue("stop", null, out _);
+            return TryPropose(State.RunId, State.Version, action, targetId, out _);
+        }
+
+        internal void ToggleJournal()
+        {
+            if (journal != null) Release(ref journal);
+            else if (!IntroOpen && !MenuOpen && !ModelWait && navigationError == null && !State.TimedOut)
+                Acquire(ref journal, PauseReason.Journal, "field-notes");
         }
 
         public void SubmitTestAction(string action)

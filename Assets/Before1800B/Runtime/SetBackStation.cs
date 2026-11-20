@@ -64,7 +64,7 @@ namespace Before1800.PartB
         bool AtDoorControl(Transform view)
         {
             return IsAvailable && view && !InRestrictedArea(view.position) &&
-                InView(view.position, view.forward, doorControl, 2f, 35f);
+                InView(view.position, view.forward, doorControl, 2f, 35f, view.GetComponentInParent<CharacterController>()?.transform);
         }
 
         public bool AtObservation(Transform lin)
@@ -79,8 +79,8 @@ namespace Before1800.PartB
         {
             if (!DoorOpen || !AtObservation(lin) || !setMark.enabled || !setBrace.enabled) return false;
             Vector3 eyes = lin.position + Vector3.up * 1.55f;
-            return InView(eyes, lin.forward, SetMark, 8f, 50f) &&
-                InView(eyes, lin.forward, SetBrace, 8f, 50f);
+            return InView(eyes, lin.forward, SetMark, 8f, 50f, lin) &&
+                InView(eyes, lin.forward, SetBrace, 8f, 50f, lin);
         }
 
         public bool InRestrictedArea(Vector3 position)
@@ -96,7 +96,7 @@ namespace Before1800.PartB
             if (!IsAvailable || !DoorOpen || !player || !view || !InRestrictedArea(player.position) ||
                 !routeProbe.gameObject.activeInHierarchy || !exitPoint.gameObject.activeInHierarchy ||
                 Vector3.Distance(player.position, routeProbe.position) > .8f ||
-                !InView(view.position, view.forward, routeSign, 3f, 35f) ||
+                !InView(view.position, view.forward, routeSign, 3f, 35f, player) ||
                 (routeBlocker && routeBlocker.activeInHierarchy)) return false;
 
             // This probe certifies the marked short passage. A detour around it elsewhere on
@@ -115,13 +115,12 @@ namespace Before1800.PartB
             return true;
         }
 
-        static bool InView(Vector3 origin, Vector3 forward, Transform target, float range, float angle)
+        static bool InView(Vector3 origin, Vector3 forward, Transform target, float range, float angle, Transform observer)
         {
             if (!target.gameObject.activeInHierarchy) return false;
             Vector3 ray = target.position - origin;
             if (ray.sqrMagnitude > range * range || Vector3.Angle(forward, ray) > angle) return false;
-            return !Physics.Raycast(origin, ray.normalized, out var hit, ray.magnitude,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore) || hit.transform.IsChildOf(target);
+            return InteractionSight.Clear(origin, ray, observer, target);
         }
 
         internal static SetBackStation BuildGreybox(Transform parent, Material[] palette, Transform returnPoint)

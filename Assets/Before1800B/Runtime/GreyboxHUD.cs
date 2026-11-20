@@ -10,19 +10,120 @@ namespace Before1800.PartB
         private static readonly Color Mint = new Color(0.51f, 0.90f, 0.76f);
         private static readonly Color Amber = new Color(1f, 0.79f, 0.46f);
         private PartBScene scene;
-        private bool monitorExpanded = true;
+        private PlayerUIView playerView;
+        private bool framing;
+        private Quaternion previousLook, dialogueLook;
+        private float previousFov, dialogueFov, blend;
+        public PlayerInteraction Flow { get; private set; }
         private GUIStyle body, small, heading, clock, button;
 
         public void Bind(PartBScene owner)
         {
+            // Restart has already reset the camera pose to its spawn anchor.
+            if (framing) owner.World.ViewCamera.fieldOfView = previousFov;
+            framing = false;
             scene = owner;
+            Flow = new PlayerInteraction(scene);
+            if (!playerView) playerView = gameObject.AddComponent<PlayerUIView>();
+            playerView.Bind(scene, Flow);
+            playerView.SetVisible(true);
         }
 
         // Called by the scene before the simulation step so opening a window freezes that frame.
         public void ReadShortcuts()
         {
-            if (scene == null || scene.State == null) return;
-            if (Input.GetKeyDown(KeyCode.F1)) monitorExpanded = !monitorExpanded;
+            if (scene == null || scene.State == null || Flow == null) return;
+            Flow.Tick();
+            ReadCurrentInput();
+            if (framing && !ShouldFrameConversation) RestoreLook();
+        }
+
+        private void ReadCurrentInput()
+        {
+            if (playerView.Editing)
+            {
+                if (Input.GetKeyDown(KeyCode.Escape) && string.IsNullOrEmpty(Input.compositionString))
+                    playerView.BlurInput();
+                return;
+            }
+            if (Input.GetKeyDown(KeyCode.F1) && (Flow.DebugOpen ||
+                Flow.Screen == PlayerScreen.Explore || Flow.Screen == PlayerScreen.Talk ||
+                Flow.Screen == PlayerScreen.Intro || Flow.Screen == PlayerScreen.Timeout))
+            {
+                Flow.DebugOpen = !Flow.DebugOpen;
+                playerView.SetVisible(!Flow.DebugOpen);
+                return;
+            }
+            if (!Flow.DebugOpen)
+            {
+                switch (Flow.Screen)
+                {
+                    case PlayerScreen.Explore:
+                        if (Input.GetKeyDown(KeyCode.Escape)) Flow.ToggleMenu();
+                        else if (Input.GetKeyDown(KeyCode.J)) Flow.ToggleJournal();
+                        else if (Input.GetKeyDown(KeyCode.E)) Flow.Use();
+                        break;
+                    case PlayerScreen.Talk:
+                        if (Input.GetKeyDown(KeyCode.Escape)) Flow.Back();
+                        else if (Input.GetKeyDown(KeyCode.J)) Flow.ToggleJournal();
+                        break;
+                    case PlayerScreen.Journal:
+                        if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.J)) Flow.Back();
+                        break;
+                    case PlayerScreen.Menu:
+                    case PlayerScreen.Wait:
+                    case PlayerScreen.Error:
+                        if (Input.GetKeyDown(KeyCode.Escape)) Flow.Back();
+                        break;
+                }
+                // The selected uGUI button owns Submit (Enter/Space). The focused text field owns typing.
+                return;
+            }
+            ReadDeveloperShortcuts();
+        }
+
+        private bool ShouldFrameConversation => Flow != null && !Flow.DebugOpen && Flow.FramingConversation && scene.DialogueOpen;
+
+        private void LateUpdate()
+        {
+            if (!ShouldFrameConversation)
+            {
+                RestoreLook();
+                return;
+            }
+            var camera = scene.World.ViewCamera;
+            if (!framing)
+            {
+                framing = true;
+                previousLook = camera.transform.localRotation;
+                previousFov = camera.fieldOfView;
+                var eyeLine = scene.World.Lin.position + Vector3.up * 1.52f - camera.transform.position;
+                // Keep the eyes in the upper third, leaving the lower part for subtitles.
+                dialogueFov = Mathf.Clamp(2f * Mathf.Atan2(.77f, eyeLine.magnitude) * Mathf.Rad2Deg, 37f, previousFov);
+                float down = Mathf.Atan(.31f * Mathf.Tan(dialogueFov * Mathf.Deg2Rad * .5f)) * Mathf.Rad2Deg;
+                var worldLook = Quaternion.LookRotation(eyeLine, Vector3.up) * Quaternion.Euler(down, 0f, 0f);
+                dialogueLook = Quaternion.Inverse(camera.transform.parent.rotation) * worldLook;
+                blend = 0f;
+            }
+            blend = Mathf.Min(1f, blend + Time.unscaledDeltaTime / .18f);
+            float t = Mathf.SmoothStep(0f, 1f, blend);
+            camera.transform.localRotation = Quaternion.Slerp(previousLook, dialogueLook, t);
+            camera.fieldOfView = Mathf.Lerp(previousFov, dialogueFov, t);
+        }
+
+        private void RestoreLook()
+        {
+            if (!framing) return;
+            framing = false;
+            if (!scene || !scene.World || !scene.World.ViewCamera) return;
+            scene.World.ViewCamera.transform.localRotation = previousLook;
+            scene.World.ViewCamera.fieldOfView = previousFov;
+        }
+
+        private void OnDisable() => RestoreLook();
+
+        private void ReadDeveloperShortcuts()
+        {
             if (scene.State.TimedOut)
             {
                 if (Input.GetKeyDown(KeyCode.R)) scene.Restart();
@@ -56,7 +157,7 @@ namespace Before1800.PartB
 
         private void OnGUI()
         {
-            if (scene == null || scene.State == null) return;
+            if (scene == null || scene.State == null || Flow == null || !Flow.DebugOpen) return;
             if (body == null) CreateStyles();
             float scale = Mathf.Clamp(Mathf.Min(Screen.height / 520f, Screen.width / 690f), 0.66f, 1.4f);
             scale = Mathf.Min(scale, Screen.height / (scene.MenuOpen && scene.State.CanRetryReturn ? 356f : 322f));
@@ -136,7 +237,7 @@ namespace Before1800.PartB
         private void DrawMonitor(float height)
         {
             SessionState state = scene.State;
-            bool expanded = monitorExpanded && height >= 330f;
+            bool expanded = height >= 330f;
             var card = new Card(12, 12, 276, expanded ? (scene.World.Station ? 313 : 293) : 70, Mint);
             Rect top = card.Take(19);
             GUI.Label(top, "DEVELOPER MONITOR     [F1]", small);

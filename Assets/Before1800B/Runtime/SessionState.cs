@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Before1800.PartB
 {
-    public enum PauseReason { Intro, Dialogue, ModelWait, Menu, Error, Terminal }
+    public enum PauseReason { Intro, Dialogue, ModelWait, Menu, Error, Terminal, Journal }
     public enum CooperationMode { Talking, Following, Withdrawn }
     public enum ActionStage { Idle, Queued, Moving, Arrived, Following, Withdrawing, Returning, Completed, Failed }
 
@@ -66,6 +66,7 @@ namespace Before1800.PartB
         public string run_id, time_hms, cooperation_mode, ending, action_stage;
         public long state_version, game_elapsed_ms;
         public string[] verified_evidence;
+        public string[] player_discoveries;
         public ConcernSnapshot concerns;
         public bool route_confirmed, escape_agreed;
         public string pending_action, active_action, target_id;
@@ -95,6 +96,8 @@ namespace Before1800.PartB
         public bool IsPaused => TimedOut || pauses.Count != 0;
         public bool E1Verified => verified.Contains("E1");
         public bool E5Verified => verified.Contains("E5");
+        public bool CameraDiscovered { get; private set; }
+        public bool DoorDiscovered { get; private set; }
         public bool EscapeAgreed { get; private set; }
         public bool RouteConfirmed { get; private set; }
         public CooperationMode Cooperation { get; private set; }
@@ -135,6 +138,7 @@ namespace Before1800.PartB
             Version = 0;
             ElapsedGameSeconds = 0;
             TimedOut = EscapeAgreed = RouteConfirmed = WithdrawUsed = false;
+            CameraDiscovered = DoorDiscovered = false;
             Cooperation = CooperationMode.Talking;
             Pending = Active = failedReturn = null;
             activeStage = ActionStage.Idle;
@@ -154,6 +158,15 @@ namespace Before1800.PartB
             return id != null && concerns.TryGetValue(id, out var resolved) && resolved;
         }
 
+        internal void Discover(string targetId)
+        {
+            if (IsPaused) return;
+            if (targetId == CameraTarget && !CameraDiscovered) CameraDiscovered = true;
+            else if (targetId == SetBackTarget && !DoorDiscovered) DoorDiscovered = true;
+            else return;
+            Commit("Player noticed " + targetId + ".");
+        }
+
         public SessionSnapshot ReadSnapshot()
         {
             var history = new ActionResultSnapshot[recentResults.Count];
@@ -164,6 +177,9 @@ namespace Before1800.PartB
                 run_id = RunId.ToString("N"), state_version = (long)Version,
                 time_hms = TimeHms, game_elapsed_ms = (long)(ElapsedGameSeconds * 1000),
                 verified_evidence = VerifiedEvidence,
+                player_discoveries = CameraDiscovered
+                    ? (DoorDiscovered ? new[] { CameraTarget, SetBackTarget } : new[] { CameraTarget })
+                    : (DoorDiscovered ? new[] { SetBackTarget } : Array.Empty<string>()),
                 concerns = new ConcernSnapshot
                 {
                     C1 = IsConcernResolved("C1") ? "resolved" : "open",
