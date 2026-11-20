@@ -2,8 +2,9 @@
 [Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
-[Bb]uild/
-[Bb]uilds/
+# Only ignore project-root build output, NOT plugin folders like MagicaCloth/.../Build/
+/[Bb]uild/
+/[Bb]uilds/
 [Ll]ogs/
 [Uu]ser[Ss]ettings/
 [Mm]emoryCaptures/
