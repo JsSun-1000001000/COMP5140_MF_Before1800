@@ -13,12 +13,14 @@ Unity 桌面 3D 叙事解谜 POC：你扮演林最信任的朋友（实为参与
 | --- | --- |
 | [docs/PRD_Before1800_RevisedV2.md](docs/PRD_Before1800_RevisedV2.md) | 完整产品需求文档（合并修订版 V2） |
 | [docs/开发计划_4人小组.md](docs/开发计划_4人小组.md) | 四人分工、剩余日程（11/20–11/27）、里程碑与验收门禁 |
+| [住宅试玩](docs/PartB_住宅试玩.md) | 用 MiSide 的住宅、角色和动画体验本组的 Part B 跟随、检查与计时逻辑 |
+| [灰盒试玩与 A/C 接口](docs/PartB_灰盒验收.md) | 独立测试房间、控制说明、实验事件与动作接口 |
 
 ## 快速开始
 
 1. 安装 **Unity Hub + Unity 2021.3 LTS**，模板选 **3D (URP)** 对应版本即可打开本工程。  
 2. Clone 本仓库后用 Hub 打开项目根目录；首次打开会由 Package Manager 拉取依赖。  
-3. 打开住宅相关场景，确认材质正常、第一人称可走动。  
+3. 在 Unity 的 Project 窗口打开 `Assets/Before1800Home/PartB_Residence.unity`，点 **Play**，按 **Enter** 进入住宅。独立测试场景在 `Assets/Before1800B/PartB_Greybox.unity`。  
 4. LLM API 密钥只放本地/服务端环境变量，**不要提交**到 Git。
 
 ```bash
@@ -38,7 +40,7 @@ git clone https://github.com/JsSun-1000001000/COMP5140_MF_Before1800.git
 
 ## 开发计划（摘要）
 
-当前（2026-11-20）美术占位素材已导入，玩法逻辑待实现。剩余时间按 4 个冲刺推进：
+以下是 2026-11-20 制订计划时的冲刺安排。当前 Part B 试玩入口见上方快速开始。
 
 | 冲刺 | 日期 | 目标 |
 | --- | --- | --- |
