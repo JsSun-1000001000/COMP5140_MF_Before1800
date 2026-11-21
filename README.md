@@ -44,8 +44,9 @@ git clone https://github.com/JsSun-1000001000/COMP5140_MF_Before1800.git
 
 ## 当前进度（2026-11-21）
 
-- **已合入 main**：Part B 灰盒/住宅试玩 + **Part C 真 LLM（DeepSeek 本机网关）**。
-- **M1 验收**：启动 `service/start.ps1` → 开灰盒 → **F2** 启用 DeepSeek → 自由文本邀请林检查 → 模型返回 `inspect` → 现场完成写入证据 → 下一轮上下文可见。步骤见 [Part C 本地演示](docs/PartC_本地演示.md)。
+- **已合入 main**：Part B 灰盒/住宅试玩 + **Part C 真 LLM（DeepSeek 本机网关）** + **E1 真实跟踪实验**。
+- **M1 验收**：启动 `service/start.ps1` → 开灰盒/住宅 → **F2** 启用 DeepSeek → 自由文本邀请林检查 → 模型返回 `inspect` → 现场完成写入证据 → 下一轮上下文可见。步骤见 [Part C 本地演示](docs/PartC_本地演示.md)。
+- **E1 验收**：林到第一个观察点后对准镜头按 **E/F**，换到第二个点并看到镜头跟随，才写入 E1（到场本身不算）。
 - **密钥**：复制 `service/.env.example` 为 `service/.env` 并填入 `LLM_API_KEY`，勿提交。
 
 ## 开发计划（摘要）

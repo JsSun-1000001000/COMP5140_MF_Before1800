@@ -38,6 +38,7 @@ namespace Before1800.PartB
         public bool MenuOpen => menu != null;
         public bool JournalOpen => journal != null;
         public bool ObservingSetBack => observingSetBack != null;
+        public bool ObservingCamera => trackingCamera != null;
         public bool CheckingRoute => checkingRouteRun != Guid.Empty;
         public bool ModelWait => State.HasPause(PauseReason.ModelWait);
         public bool TestPathBlocked => World.ObservationBlockedForTest;
@@ -52,10 +53,12 @@ namespace Before1800.PartB
         private ModelRequest modelRequest;
         private ActionTicket testCompletion;
         private ActionTicket observingSetBack;
+        private ActionTicket trackingCamera;
         private Guid checkingRouteRun;
-        private float observationSeconds, routeSeconds;
+        private float observationSeconds, routeSeconds, cameraLockSeconds;
         private const float SetBackObservationDuration = 2f;
         private const float RouteCheckDuration = 1f;
+        private const float CameraTrackLockDuration = 1.2f;
         private float previousTimeScale;
         private CursorLockMode originalLockMode;
         private bool originalCursorVisible, frozen, skipNextInput;
@@ -128,6 +131,7 @@ namespace Before1800.PartB
             World.StepPlayer(move, look, dt);
             StepLin(dt);
             StepSetBackChecks(dt);
+            StepCameraTracking(dt);
             if (testCompletion != null)
             {
                 var ticket = testCompletion;
@@ -149,6 +153,7 @@ namespace Before1800.PartB
                     if (travel == TravelResult.Failed) FailTravel(ticket);
                     return;
                 case ActionStage.Arrived:
+                    if (trackingCamera != null && ticket == trackingCamera) return;
                     if (!World.AtObservation(ticket.TargetId) && State.ReportObservationLost(ticket)) ShowNavigationError();
                     return;
                 case ActionStage.Returning:
@@ -213,9 +218,11 @@ namespace Before1800.PartB
         {
             if (ticket != null && ticket.TargetId == SessionState.CameraTarget &&
                 State.Stage == ActionStage.Arrived && !State.IsPaused && ticket == State.Active &&
-                !World.IsAtObservation && State.ReportObservationLost(ticket))
+                trackingCamera == null && !World.IsAtObservation && State.ReportObservationLost(ticket))
                 ShowNavigationError();
             if (!State.TryCompleteCameraExperiment(ticket, eventId)) return false;
+            trackingCamera = null;
+            cameraLockSeconds = 0f;
             World.ResetTravel();
             Feedback = State.LastResult;
             return true;
@@ -223,8 +230,13 @@ namespace Before1800.PartB
 
         public string SetBackInteractionHint()
         {
+            if (State.IsPaused) return null;
+            if (trackingCamera != null) return "Lin is changing marks. Watch the housing turn with her.";
+            if (State.Stage == ActionStage.Arrived && State.Active?.TargetId == SessionState.CameraTarget &&
+                World.Camera && World.Camera.CanStartTracking(World.ViewCamera.transform, World.Lin))
+                return "[F] Ask Lin to change marks and watch the camera";
             var station = World.Station;
-            if (!station || State.IsPaused) return null;
+            if (!station) return null;
             if (checkingRouteRun != Guid.Empty) return "Checking the passage. Stay here and face the sign.";
             if (observingSetBack != null) return "Lin is looking for the support and the production mark. Keep his view clear.";
             var view = World.ViewCamera.transform;
@@ -235,11 +247,31 @@ namespace Before1800.PartB
             return null;
         }
 
+        public bool TryBeginCameraTracking(ActionTicket ticket)
+        {
+            var camera = World.Camera;
+            if (State.IsPaused || !camera || trackingCamera != null || ticket == null || ticket != State.Active ||
+                ticket.TargetId != SessionState.CameraTarget || State.Stage != ActionStage.Arrived ||
+                !camera.CanStartTracking(World.ViewCamera.transform, World.Lin)) return false;
+            if (!camera.CanReachSecondMark())
+            {
+                Feedback = "The second observation mark is blocked. Clear the path first.";
+                return false;
+            }
+            trackingCamera = ticket;
+            cameraLockSeconds = 0f;
+            World.ResetTravel();
+            Feedback = "Lin is moving to the second mark. Watch the camera housing.";
+            return true;
+        }
+
         // The same interaction and timers drive the greybox and a scene with an authored station.
         public void InteractWithSetBack()
         {
+            if (State.IsPaused) return;
+            if (TryBeginCameraTracking(State.Active)) return;
             var station = World.Station;
-            if (!station || State.IsPaused) return;
+            if (!station) return;
             var view = World.ViewCamera.transform;
             if (station.TryOpenDoor(view))
             {
@@ -248,6 +280,32 @@ namespace Before1800.PartB
                 return;
             }
             if (!TryBeginRouteCheck(State.RunId)) TryBeginSetBackObservation(State.Active);
+        }
+
+        private void StepCameraTracking(float dt)
+        {
+            if (trackingCamera == null) return;
+            if (trackingCamera != State.Active || State.Stage != ActionStage.Arrived || !World.Camera)
+            {
+                trackingCamera = null;
+                cameraLockSeconds = 0f;
+                return;
+            }
+            var travel = World.StepCameraTrack(dt);
+            if (travel == TravelResult.Failed)
+            {
+                if (State.ReportFailure(trackingCamera, World.FailureCode)) ShowNavigationError();
+                trackingCamera = null;
+                cameraLockSeconds = 0f;
+                return;
+            }
+            if (travel == TravelResult.Arrived && World.Camera.TrackingVisible(World.Lin))
+            {
+                cameraLockSeconds += dt;
+                if (cameraLockSeconds >= CameraTrackLockDuration)
+                    TryCompleteCameraExperiment(trackingCamera, Guid.NewGuid());
+            }
+            else cameraLockSeconds = 0f;
         }
 
         // Scene controls can call these entry points with the identities captured for this interaction.
@@ -333,8 +391,9 @@ namespace Before1800.PartB
         private void ResetSetBackChecks()
         {
             observingSetBack = null;
+            trackingCamera = null;
             checkingRouteRun = Guid.Empty;
-            observationSeconds = routeSeconds = 0f;
+            observationSeconds = routeSeconds = cameraLockSeconds = 0f;
         }
 
         public bool TryBeginModelRequest(out ModelRequest request)

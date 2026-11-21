@@ -18,7 +18,7 @@ namespace Before1800.PartB
     public sealed class PlayerInteraction
     {
         private enum Topic { Opening, Camera, Honesty, Company, Door, Reply }
-        private enum Focus { None, Lin, Camera, OpenDoor, InspectDoor, Route }
+        private enum Focus { None, Lin, Camera, TrackCamera, OpenDoor, InspectDoor, Route }
 
         private readonly PartBScene scene;
         private readonly List<PlayerChoice> choices = new List<PlayerChoice>(3);
@@ -111,6 +111,10 @@ namespace Before1800.PartB
         private Focus CurrentFocus()
         {
             if (Screen != PlayerScreen.Explore || DebugOpen) return Focus.None;
+            if (!scene.ObservingCamera && State.Stage == ActionStage.Arrived &&
+                State.Active?.TargetId == SessionState.CameraTarget && World.Camera &&
+                World.Camera.CanStartTracking(World.ViewCamera.transform, World.Lin))
+                return Focus.TrackCamera;
             if (World.CanExamineCamera) return Focus.Camera;
             var station = World.Station;
             if (station)
@@ -134,6 +138,7 @@ namespace Before1800.PartB
                 {
                     case Focus.Lin: return State.Cooperation == CooperationMode.Withdrawn ? "重新和林说话" : "和林说话";
                     case Focus.Camera: return State.CameraDiscovered ? "查看镜头记录" : "查看镜头";
+                    case Focus.TrackCamera: return "请林换到第二个观察点，看镜头是否跟随";
                     case Focus.OpenDoor: return "打开维修门";
                     case Focus.InspectDoor: return "请林观察门后的布景";
                     case Focus.Route: return "检查通道";
@@ -151,14 +156,14 @@ namespace Before1800.PartB
                 if (Time.unscaledTime < transientUntil && transient.Length > 0) return transient;
                 if (scene.CheckingRoute) return "正在检查通道，保持面向检查牌。";
                 if (scene.ObservingSetBack) return "林在辨认支架和标记，给她留出视线。";
+                if (scene.ObservingCamera) return "林正在换到第二个观察点。盯着镜头外壳，看它是否跟着转。";
                 if (State.Stage == ActionStage.Arrived)
                     return State.Active?.TargetId == SessionState.SetBackTarget
                         ? "林到了维修门边。靠近门旁的控制器，请她一起观察。"
-                        : State.CameraDiscovered ? "林到了镜头前。按 J 回看手记，或靠近她继续聊。"
-                            : "林到了镜头前。走近镜头，按 E 记下你的发现。";
+                        : "林到了第一个观察点。对准镜头按 E，请她换到第二个点并观察镜头是否跟随。";
                 if (State.Stage == ActionStage.Returning)
                     return State.Active?.TargetId == SessionState.SetBackTarget
-                        ? "林看清了布景支架，正在往回走。" : "林亲眼看见镜头转动，正在往回走。";
+                        ? "林看清了布景支架，正在往回走。" : "林亲眼看见镜头跟随转动，正在往回走。";
                 return "";
             }
         }
@@ -178,8 +183,8 @@ namespace Before1800.PartB
                 if (State.Cooperation == CooperationMode.Withdrawn) return "先停一下吧。我还没准备好接着说。";
                 switch (topic)
                 {
-                    case Topic.Camera: return State.E1Verified ? "刚才它真的跟着我转了……谁在看？" :
-                        "电视上面那个小黑点？我想过去看看，它会不会跟着我转。";
+                    case Topic.Camera: return State.E1Verified ? "我换到第二个点时，它真的跟着转了……谁在看？" :
+                        "电视上面那个小黑点？我想站到两个观察点上，看它会不会跟着我转。";
                     case Topic.Door: return State.E5Verified ? "那些支架和编号，我都看清了。这面墙是搭起来的。" :
                         "你说的是那扇维修门？我想亲眼看一下后面有什么。";
                     case Topic.Honesty: return "那就从你知道的第一件事说起吧。我想听你亲口告诉我。";
@@ -207,7 +212,7 @@ namespace Before1800.PartB
                 if (State.CameraDiscovered) found.Add(World.UsesSceneBindings ? "电视上方装着一个朝向客厅的镜头。" : "墙上的镜头朝向房间。");
                 if (State.DoorDiscovered) found.Add("维修门后有一段窄通道。");
                 var seen = new List<string>(2);
-                if (State.E1Verified) seen.Add("林看见镜头随着她的位置转动。");
+                if (State.E1Verified) seen.Add("林换到第二个观察点时，镜头外壳跟着转向她。");
                 if (State.E5Verified) seen.Add("林看清了墙后的支架和制作标记。");
                 journalCache = "我留意到的\n" + (found.Count > 0 ? string.Join("\n", found) : "还没有记下发现。") +
                     "\n\n林亲眼确认的\n" + (seen.Count > 0 ? string.Join("\n", seen) : "还没有亲眼确认的线索。") +
@@ -322,6 +327,11 @@ namespace Before1800.PartB
                         State.Discover(SessionState.CameraTarget);
                         Flash("记入手记：这里装着一个镜头。");
                     }
+                    break;
+                case Focus.TrackCamera:
+                    if (!scene.TryBeginCameraTracking(State.Active))
+                        Flash("对准镜头，并确认林站在第一个金色观察点上。");
+                    else transient = "";
                     break;
                 case Focus.OpenDoor:
                     scene.InteractWithSetBack();

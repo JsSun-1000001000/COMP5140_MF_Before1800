@@ -20,6 +20,7 @@ namespace Before1800.PartB
         [SerializeField] Material[] layoutMaterials;
         [SerializeField] bool usesSceneBindings;
         [SerializeField] SetBackStation setBackStation;
+        [SerializeField] CameraStation cameraStation;
 
         NavMeshDataInstance navigation;
         Transform namePlate;
@@ -53,6 +54,7 @@ namespace Before1800.PartB
         public Transform ObservationPoint => observationPoint;
         public Transform CameraTarget => cameraTarget;
         public SetBackStation Station => setBackStation && setBackStation.IsAvailable ? setBackStation : null;
+        public CameraStation Camera => cameraStation && cameraStation.IsAvailable ? cameraStation : null;
         public NavMeshData NavigationData => navigationData;
         public bool UsesSceneBindings => usesSceneBindings;
         // The visual rig can glance toward the current waypoint before the body finishes turning.
@@ -192,6 +194,10 @@ namespace Before1800.PartB
             if (!setBackStation) setBackStation = GetComponentInChildren<SetBackStation>(true);
             if (!setBackStation && !usesSceneBindings)
                 setBackStation = SetBackStation.BuildGreybox(transform, layoutMaterials, returnPoint);
+            Material mark = layoutMaterials != null && layoutMaterials.Length > 4 ? layoutMaterials[4] : null;
+            if (!cameraStation) cameraStation = GetComponentInChildren<CameraStation>(true);
+            if (!cameraStation || !cameraStation.IsAvailable)
+                cameraStation = CameraStation.Ensure(cameraTarget, observationPoint, mark);
             openObservationPoint = observationPoint.position;
             namePlate = Lin.Find("Name plate");
             nameLabel = Lin.Find("Lin name");
@@ -203,6 +209,7 @@ namespace Before1800.PartB
         {
             SetObservationBlockedForTest(false);
             if (setBackStation) setBackStation.ResetDoor();
+            if (cameraStation) cameraStation.ResetPose();
             ResetActor(player, playerStart);
             ResetActor(lin, returnPoint);
             pitch = 0f;
@@ -263,6 +270,17 @@ namespace Before1800.PartB
             if (result != TravelResult.Arrived) return result;
             if (!Face(focus.position, dt)) return TravelResult.Moving;
             return AtObservation(targetId) ? TravelResult.Arrived : Fail("RC_OBSERVATION_BLOCKED");
+        }
+
+        // During the live E1 experiment Lin walks from mark A to mark B while the housing pans.
+        public TravelResult StepCameraTrack(float dt)
+        {
+            if (!Camera) return Fail("RC_OBSERVATION_BLOCKED");
+            Camera.StepTrack(Lin, dt);
+            var result = Travel(Camera.ObserveB.position, ArrivalRadius, dt);
+            if (result != TravelResult.Arrived) return result;
+            if (!Face(cameraTarget.position, dt)) return TravelResult.Moving;
+            return Camera.AtSecondMark(Lin) ? TravelResult.Arrived : TravelResult.Moving;
         }
 
         public TravelResult StepFollow(float dt) => StepFollow(dt, false);

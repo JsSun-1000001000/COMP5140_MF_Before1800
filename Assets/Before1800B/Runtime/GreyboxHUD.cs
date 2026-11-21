@@ -293,7 +293,7 @@ namespace Before1800.PartB
             if (hint == null && scene.State.Stage == ActionStage.Arrived && !scene.State.IsPaused)
                 hint = scene.State.Active?.TargetId == SessionState.SetBackTarget ?
                     "At the maintenance door, face its control and press F to help Lin inspect the set." :
-                    "Lin is at the camera.   [V] Send mock E1 experiment completion";
+                    "Lin is at mark A.   [F] Start live tracking   [V] Debug-only mock E1";
             if (hint == null) hint = scene.World.Station
                 ? "WASD  Move      E  Talk      F  Use maintenance station      Esc  Menu      F1  Monitor"
                 : "WASD  Move      Mouse  Look      E  Talk to Lin      Esc  Menu      F1  Monitor";
@@ -320,7 +320,7 @@ namespace Before1800.PartB
             string introText = residenceIntro
                 ? "Lin thinks this home is real. You're the actor playing his friend. Help him uncover the set and leave with you before 18:00."
                 : scene.World.Station ? "At the maintenance door, let Lin see how the set was built. Walk behind it yourself to check the passage." :
-                "Ask Lin to check the camera. Watch his arrival, then test the separate experiment result.";
+                "Ask Lin to check the camera. After arrival, press F to run the live tracking experiment.";
             float introTextHeight = residenceIntro ? Mathf.Max(52, body.CalcHeight(new GUIContent(introText), cardWidth - 28)) : 52;
             float cardHeight = scene.State.TimedOut ? 150 : scene.IntroOpen ? 180 + introTextHeight :
                 scene.MenuOpen ? 306 : fault ? 205 : scene.DialogueOpen ? 297 : 145;
@@ -345,7 +345,7 @@ namespace Before1800.PartB
                     residenceIntro ? "E talk / resume.   1 follow.   3 inspect camera." :
                     "E to talk, 3 to queue the check, E to resume.", small);
                 GUI.Label(card.Take(24), scene.World.Station ? "F at the door control or passage sign to interact." :
-                    "V sends the mock E1 completion after arrival.", small);
+                    "F runs live tracking A→B. V remains a debug-only mock completion.", small);
                 if (Click(ref card, "Enter room   [Enter]")) scene.ToggleIntroOff();
             }
             else if (scene.MenuOpen)
