@@ -76,7 +76,7 @@ namespace Before1800.PartB
 
         public bool CanStartTracking(Transform view, Transform lin)
         {
-            if (!IsAvailable || !view || !lin || !AtFirstMark(lin)) return false;
+            if (!IsAvailable || !view || !lin || !NearFirstMark(lin)) return false;
             return PlayerCanSeeDevice(view);
         }
 
@@ -85,40 +85,53 @@ namespace Before1800.PartB
             if (!IsAvailable || !view) return false;
             Vector3 origin = view.position;
             Vector3 delta = Device.position - origin;
-            if (delta.sqrMagnitude > 3.2f * 3.2f || Vector3.Angle(view.forward, delta) > 22f) return false;
+            if (delta.sqrMagnitude > 4.2f * 4.2f || Vector3.Angle(view.forward, delta) > 32f) return false;
             return InteractionSight.Clear(origin, delta, view.GetComponentInParent<CharacterController>()?.transform, Device);
+        }
+
+        public bool NearFirstMark(Transform lin)
+        {
+            return IsAvailable && lin && Vector3.Distance(lin.position, observeA.position) <= .85f;
         }
 
         public bool AtFirstMark(Transform lin)
         {
-            if (!IsAvailable || !lin) return false;
-            if (Vector3.Distance(lin.position, observeA.position) > .65f) return false;
+            if (!NearFirstMark(lin)) return false;
             Vector3 eye = lin.position + Vector3.up * 1.55f;
             Vector3 toward = Device.position - eye;
-            return Vector3.Angle(lin.forward, Flat(toward)) <= 35f &&
-                InteractionSight.Clear(eye, toward, lin, Device);
+            return Vector3.Angle(lin.forward, Flat(toward)) <= 55f;
         }
 
         public bool AtSecondMark(Transform lin)
         {
             if (!IsAvailable || !lin) return false;
-            if (Vector3.Distance(lin.position, observeB.position) > .65f) return false;
+            if (Vector3.Distance(lin.position, observeB.position) > .85f) return false;
             Vector3 eye = lin.position + Vector3.up * 1.55f;
             Vector3 toward = Device.position - eye;
-            return Vector3.Angle(lin.forward, Flat(toward)) <= 40f;
+            return Vector3.Angle(lin.forward, Flat(toward)) <= 60f;
+        }
+
+        public string DescribeStartBlock(Transform view, Transform lin)
+        {
+            if (!IsAvailable) return "镜头跟踪装置还没准备好。";
+            if (!lin || !NearFirstMark(lin)) return "等林站到第一个金色观察点上。";
+            if (!view || !PlayerCanSeeDevice(view)) return "请走近并对准镜头（准星对着镜头外壳）。";
+            return "";
         }
 
         public bool TrackingVisible(Transform lin)
         {
             if (!IsAvailable || !lin) return false;
-            Vector3 lens = housing.position;
+            // Aim from slightly in front of the housing so the case/lens colliders
+            // do not block the verification ray before it leaves the device.
+            Vector3 lens = housing.position + housing.forward * .08f;
             Vector3 target = lin.position + Vector3.up * 1.55f;
             Vector3 delta = target - lens;
             if (delta.sqrMagnitude < .01f) return true;
             float yawError = Vector3.Angle(Flat(housing.forward), Flat(delta));
             float pitchError = Mathf.Abs(Vector3.SignedAngle(housing.forward, delta.normalized, housing.right));
-            return yawError <= 18f && pitchError <= 28f &&
-                InteractionSight.Clear(lens, delta, null, lin);
+            return yawError <= 28f && pitchError <= 40f &&
+                InteractionSight.Clear(lens, delta, Device, lin);
         }
 
         public void StepTrack(Transform lin, float dt)

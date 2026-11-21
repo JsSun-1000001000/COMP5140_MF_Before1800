@@ -127,9 +127,10 @@ namespace Before1800.PartB
         private Focus CurrentFocus()
         {
             if (Screen != PlayerScreen.Explore || DebugOpen) return Focus.None;
-            if (!scene.ObservingCamera && State.Stage == ActionStage.Arrived &&
+            // Prefer the E1 experiment over journal/discover while Lin is waiting at the camera.
+            if (!scene.ObservingCamera && !State.E1Verified && State.Stage == ActionStage.Arrived &&
                 State.Active?.TargetId == SessionState.CameraTarget && World.Camera &&
-                World.Camera.CanStartTracking(World.ViewCamera.transform, World.Lin))
+                (World.Camera.CanStartTracking(World.ViewCamera.transform, World.Lin) || World.CanExamineCamera))
                 return Focus.TrackCamera;
             if (World.CanExamineCamera) return Focus.Camera;
             var station = World.Station;
@@ -350,8 +351,13 @@ namespace Before1800.PartB
                     break;
                 case Focus.TrackCamera:
                     if (!scene.TryBeginCameraTracking(State.Active))
-                        Flash("对准镜头，并确认林站在第一个金色观察点上。");
-                    else Flash("跟踪开始：林会走到第二个点，镜头指示灯会亮起。", 4f);
+                    {
+                        string block = World.Camera
+                            ? World.Camera.DescribeStartBlock(World.ViewCamera.transform, World.Lin)
+                            : "镜头跟踪装置还没准备好。";
+                        Flash(string.IsNullOrEmpty(block) ? "现在还不能开始跟踪验证。" : block, 4f);
+                    }
+                    else Flash("跟踪开始：林会走到第二个点，锁定进度到 100% 才会写入手记。", 4.5f);
                     break;
                 case Focus.OpenDoor:
                     scene.InteractWithSetBack();

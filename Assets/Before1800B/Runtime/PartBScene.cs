@@ -310,23 +310,37 @@ namespace Before1800.PartB
                 ClearCameraTracking(CameraSignal.Idle);
                 return;
             }
-            if (travel == TravelResult.Arrived && World.Camera.TrackingVisible(World.Lin))
+            if (travel == TravelResult.Arrived)
             {
-                if (cameraLockSeconds <= 0f) World.Camera.SetSignal(CameraSignal.Verifying);
-                cameraLockSeconds += dt;
-                int percent = Mathf.Clamp(Mathf.RoundToInt(CameraLockProgress * 100f), 1, 99);
-                CameraTrackHint = "第二观察点锁定中 " + percent + "% — 镜头正在对准林。";
-                Feedback = CameraTrackHint;
-                if (cameraLockSeconds >= CameraTrackLockDuration)
-                    TryCompleteCameraExperiment(trackingCamera, Guid.NewGuid());
+                // Once Lin is on mark B and facing the device, accept the always-on pan
+                // as verification. Exact lens occlusion is only a soft warning.
+                bool locked = World.Camera.AtSecondMark(World.Lin);
+                bool clear = World.Camera.TrackingVisible(World.Lin);
+                if (locked)
+                {
+                    if (cameraLockSeconds <= 0f) World.Camera.SetSignal(CameraSignal.Verifying);
+                    cameraLockSeconds += dt;
+                    int percent = Mathf.Clamp(Mathf.RoundToInt(CameraLockProgress * 100f), 1, 99);
+                    CameraTrackHint = clear
+                        ? "第二观察点锁定中 " + percent + "% — 镜头正在对准林。"
+                        : "第二观察点锁定中 " + percent + "% — 外壳已转向，视线略有遮挡也可完成。";
+                    Feedback = CameraTrackHint;
+                    if (cameraLockSeconds >= CameraTrackLockDuration)
+                        TryCompleteCameraExperiment(trackingCamera, Guid.NewGuid());
+                }
+                else
+                {
+                    cameraLockSeconds = 0f;
+                    World.Camera.SetSignal(CameraSignal.Watching);
+                    CameraTrackHint = "林靠近第二点了，等她转朝镜头。";
+                    Feedback = CameraTrackHint;
+                }
             }
             else
             {
                 cameraLockSeconds = 0f;
                 World.Camera.SetSignal(CameraSignal.Watching);
-                CameraTrackHint = travel == TravelResult.Arrived
-                    ? "林已到第二点，但镜头尚未对准。稍微退开，别挡住视线。"
-                    : "林正换到第二个观察点，镜头外壳应持续转向她。";
+                CameraTrackHint = "林正换到第二个观察点，镜头外壳应持续转向她。";
                 Feedback = CameraTrackHint;
             }
         }
