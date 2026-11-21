@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.AI;
-using UnityEngine.Rendering;
 
 namespace Before1800.PartB
 {
@@ -165,87 +164,6 @@ namespace Before1800.PartB
             station.restrictedArea.center = new Vector3(0f, 1f, 1.19f);
             station.restrictedArea.size = new Vector3(2.23f, 2.8f, 2.34f);
             return station;
-        }
-
-        // Compact east-wall closet for the WeTogether living room: no greybox wing required.
-        // Local +Z points into the niche; the door faces the living room (-Z).
-        internal static SetBackStation BuildResidenceAlcove(Transform parent, Transform returnPoint)
-        {
-            Material panel = Mat("Residence Closet Panel", new Color(.43f, .49f, .49f));
-            Material steel = Mat("Residence Closet Steel", new Color(.18f, .20f, .22f));
-            Material gold = Mat("Residence Closet Gold", new Color(.95f, .59f, .20f));
-            Material paint = Mat("Residence Closet Paint", new Color(.78f, .77f, .70f));
-
-            // Face the living room (-X). Local +Z extends into a shallow east-wall niche.
-            Transform root = Node(parent, "E5 residence maintenance closet", new Vector3(4.15f, 0f, .55f));
-            root.localRotation = Quaternion.Euler(0f, -90f, 0f);
-            var station = root.gameObject.AddComponent<SetBackStation>();
-            station.returnPoint = returnPoint;
-
-            for (int side = -1; side <= 1; side += 2)
-            {
-                Carve(Box(root, "Closet side", new Vector3(.78f * side, 1.05f, .72f),
-                    new Vector3(.10f, 2.10f, 1.55f), panel));
-                Box(root, "Door jamb", new Vector3(.70f * side, 1.08f, 0f), new Vector3(.12f, 2.16f, .12f), steel);
-            }
-            Box(root, "Lintel", new Vector3(0f, 2.16f, 0f), new Vector3(1.52f, .14f, .12f), steel);
-            station.doorHinge = Node(root, "Door hinge", new Vector3(-.66f, 0f, 0f));
-            Box(station.doorHinge, "Maintenance closet door", new Vector3(.66f, 1.02f, 0f),
-                new Vector3(1.32f, 2.04f, .07f), panel);
-            station.doorControl = Box(root, "Door control", new Vector3(.72f, 1.22f, -.12f),
-                new Vector3(.16f, .30f, .08f), gold);
-            Caption(root, "E5  |  CLOSET", new Vector3(0f, 2.34f, -.08f), .034f);
-
-            station.observationPoint = Node(root, "e5_set_observe", new Vector3(0f, .02f, -.78f));
-            MarkFloor(station.observationPoint, gold);
-            Transform brace = Box(root, "Set support", new Vector3(-.32f, 1.12f, 1.18f),
-                new Vector3(.11f, 1.35f, .11f), gold);
-            brace.localRotation = Quaternion.Euler(0f, 0f, -18f);
-            Box(root, "Scenery crossbar", new Vector3(-.10f, 1.72f, 1.22f), new Vector3(.85f, .09f, .10f), steel);
-            Carve(Box(root, "Unfinished panel", new Vector3(0f, 1.05f, 1.32f),
-                new Vector3(1.42f, 2.05f, .08f), paint));
-            station.setBrace = brace.GetComponent<Renderer>();
-            Transform mark = Box(root, "Production mark", new Vector3(.28f, 1.48f, 1.24f),
-                new Vector3(.62f, .32f, .06f), steel);
-            station.setMark = mark.GetComponent<Renderer>();
-            Caption(root, "SET 04 / B", new Vector3(.28f, 1.49f, 1.205f), .02f);
-
-            station.routeProbe = Node(root, "route_probe", new Vector3(0f, .025f, .42f));
-            MarkFloor(station.routeProbe, gold);
-            station.exitPoint = Node(root, "Route clearance endpoint", new Vector3(0f, .025f, 1.05f));
-            station.routeSign = Box(root, "Route check plate", new Vector3(.36f, 1.12f, 1.22f),
-                new Vector3(.70f, .24f, .07f), panel);
-            Caption(root, "CHECK", new Vector3(.36f, 1.12f, 1.178f), .018f);
-
-            station.restrictedArea = root.gameObject.AddComponent<BoxCollider>();
-            station.restrictedArea.isTrigger = true;
-            station.restrictedArea.center = new Vector3(0f, 1f, .78f);
-            station.restrictedArea.size = new Vector3(1.45f, 2.5f, 1.55f);
-            station.openAngle = -95f;
-            station.ResetDoor();
-            return station;
-        }
-
-        static Material Mat(string name, Color color)
-        {
-            var shader = GraphicsSettings.currentRenderPipeline
-                ? Shader.Find("Universal Render Pipeline/Lit") : Shader.Find("Standard");
-            if (!shader) shader = Shader.Find("Sprites/Default");
-            var mat = new Material(shader) { name = name, color = color };
-            if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", .18f);
-            if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", .18f);
-            return mat;
-        }
-
-        static void MarkFloor(Transform mark, Material gold)
-        {
-            for (int side = -1; side <= 1; side += 2)
-            {
-                var a = Box(mark, "Floor mark", new Vector3(side * .28f, .01f, 0f), new Vector3(.05f, .01f, .55f), gold);
-                a.GetComponent<Collider>().enabled = false;
-                var b = Box(mark, "Floor mark", new Vector3(0f, .01f, side * .28f), new Vector3(.55f, .01f, .05f), gold);
-                b.GetComponent<Collider>().enabled = false;
-            }
         }
 
         static Transform Node(Transform parent, string name, Vector3 position)

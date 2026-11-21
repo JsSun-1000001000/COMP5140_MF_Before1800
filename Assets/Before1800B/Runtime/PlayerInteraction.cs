@@ -156,9 +156,9 @@ namespace Before1800.PartB
                     case Focus.Lin: return State.Cooperation == CooperationMode.Withdrawn ? "重新和林说话" : "和林说话";
                     case Focus.Camera: return State.CameraDiscovered ? "查看镜头记录" : "查看镜头";
                     case Focus.TrackCamera: return "请林换到第二个观察点，看镜头是否跟随";
-                    case Focus.OpenDoor: return World.UsesSceneBindings ? "打开维修壁橱" : "打开维修门";
+                    case Focus.OpenDoor: return "打开维修门";
                     case Focus.InspectDoor: return "请林观察门后的布景";
-                    case Focus.Route: return World.UsesSceneBindings ? "检查壁橱内短通道" : "检查通道";
+                    case Focus.Route: return "检查通道";
                     default: return "";
                 }
             }
@@ -207,9 +207,7 @@ namespace Before1800.PartB
                     case Topic.Camera: return State.E1Verified ? "我换到第二个点时，它真的跟着转了……谁在看？" :
                         "电视上面那个小黑点？我想站到两个观察点上，看它会不会跟着我转。";
                     case Topic.Door: return State.E5Verified ? "那些支架和编号，我都看清了。这面墙是搭起来的。" :
-                        World.UsesSceneBindings
-                            ? "东边那扇维修壁橱……我想亲眼看一下门后到底有什么。"
-                            : "你说的是那扇维修门？我想亲眼看一下后面有什么。";
+                        "你说的是那扇维修门？我想亲眼看一下后面有什么。";
                     case Topic.Honesty: return "那就从你知道的第一件事说起吧。我想听你亲口告诉我。";
                     case Topic.Company: return State.Cooperation == CooperationMode.Following
                         ? "要我在这里等你吗？" : "嗯，你带路。我跟着你。";
@@ -233,20 +231,13 @@ namespace Before1800.PartB
                 if (journalCache != null && journalVersion == State.Version && journalStation == station) return journalCache;
                 var found = new List<string>(2);
                 if (State.CameraDiscovered) found.Add(World.UsesSceneBindings ? "电视上方装着一个朝向客厅的镜头。" : "墙上的镜头朝向房间。");
-                if (State.DoorDiscovered)
-                    found.Add(World.UsesSceneBindings
-                        ? "东墙有一扇维修壁橱门，门后不像普通储物空间。"
-                        : "维修门后有一段窄通道。");
+                if (State.DoorDiscovered) found.Add("维修门后有一段窄通道。");
                 var seen = new List<string>(2);
                 if (State.E1Verified) seen.Add("林换到第二个观察点时，镜头外壳跟着转向她。");
                 if (State.E5Verified) seen.Add("林看清了墙后的支架和制作标记。");
                 journalCache = "我留意到的\n" + (found.Count > 0 ? string.Join("\n", found) : "还没有记下发现。") +
                     "\n\n林亲眼确认的\n" + (seen.Count > 0 ? string.Join("\n", seen) : "还没有亲眼确认的线索。") +
-                    "\n\n出口路线\n" + (State.RouteConfirmed
-                        ? (World.UsesSceneBindings
-                            ? "我踏进壁橱门槛，确认门后这一小段可以通行。"
-                            : "我亲自走进通道，确认这一段可以通行。")
-                        : "尚未确认路线。");
+                    "\n\n出口路线\n" + (State.RouteConfirmed ? "我亲自走进通道，确认这一段可以通行。" : "尚未确认路线。");
                 journalVersion = State.Version;
                 journalStation = station;
                 return journalCache;
@@ -312,26 +303,22 @@ namespace Before1800.PartB
                     break;
                 case Topic.Camera:
                     if (!State.E1Verified) Add("go_camera", "一起去看看");
-                    if (World.Station)
-                        Add("door", World.UsesSceneBindings ? "东墙好像有扇维修壁橱。" : "我还看见了一扇维修门。");
+                    if (World.Station) Add("door", "我还看见了一扇维修门。");
                     Add("again", "我还想说件事。");
                     break;
                 case Topic.Door:
-                    if (!State.E5Verified && World.Station)
-                        Add("go_door", World.UsesSceneBindings ? "一起去壁橱看看" : "一起去维修门看看");
+                    if (!State.E5Verified && World.Station) Add("go_door", "一起去维修门看看");
                     Add("again", "再聊一句");
                     break;
                 case Topic.Company:
                     if (State.Cooperation == CooperationMode.Following) Add("stop", "在这里等我。");
                     else Add("follow", "跟我来。");
-                    if (World.Station)
-                        Add("door", World.UsesSceneBindings ? "跟我去看看那扇壁橱。" : "跟我去看看维修门。");
+                    if (World.Station) Add("door", "跟我去看看维修门。");
                     Add("again", "先聊点别的。");
                     break;
                 default:
                     Add("camera", "先一起看看那个镜头吧。");
-                    if (World.Station)
-                        Add("door", World.UsesSceneBindings ? "你见过东墙那扇维修壁橱吗？" : "你见过那扇维修门吗？");
+                    if (World.Station) Add("door", "你见过那扇维修门吗？");
                     Add("again", "回到刚才的话题。");
                     break;
             }

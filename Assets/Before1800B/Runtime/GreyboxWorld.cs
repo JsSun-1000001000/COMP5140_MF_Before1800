@@ -192,13 +192,9 @@ namespace Before1800.PartB
             if (!navigation.valid)
                 throw new System.InvalidOperationException("Could not register the Part B scene NavMesh.");
             if (!setBackStation) setBackStation = GetComponentInChildren<SetBackStation>(true);
-            if (!setBackStation)
-            {
-                // Residence has no greybox wing: spawn a compact east-wall closet on the living-room floor.
-                setBackStation = usesSceneBindings
-                    ? SetBackStation.BuildResidenceAlcove(transform, returnPoint)
-                    : SetBackStation.BuildGreybox(transform, layoutMaterials, returnPoint);
-            }
+            // Residence keeps the living-room layout only; the full E5 station stays in the greybox.
+            if (!setBackStation && !usesSceneBindings)
+                setBackStation = SetBackStation.BuildGreybox(transform, layoutMaterials, returnPoint);
             Material mark = layoutMaterials != null && layoutMaterials.Length > 4 ? layoutMaterials[4] : null;
             if (!cameraStation) cameraStation = GetComponentInChildren<CameraStation>(true);
             if (!cameraStation || !cameraStation.IsAvailable)
