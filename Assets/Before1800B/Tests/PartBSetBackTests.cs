@@ -62,6 +62,55 @@ namespace Before1800.PartB.Tests
             scene.ToggleIntroOff();
         }
 
+        // Opt in explicitly because this exercises the real, metered provider.
+        [UnityTest]
+        public IEnumerator DeepSeekDoorAndTrustDemo()
+        {
+            if (Environment.GetEnvironmentVariable("COMP5140_LIVE_DEMO") != "1")
+                Assert.Ignore("Run with the local gateway and COMP5140_LIVE_DEMO=1.");
+            yield return LoadGreybox();
+            var adapter = scene.GetComponent<PartCDialogue>();
+            adapter.SetLive(true);
+            WalkToDoorControl();
+            scene.InteractWithSetBack();
+            Assert.IsTrue(World.Station.DoorOpen);
+            scene.ToggleDialogue();
+            var flow = scene.GetComponent<GreyboxHUD>().Flow;
+            yield return SendLive(flow, adapter, "你不用相信我说的。请你自己到维修门前看看，门后的墙是实墙，还是有支架和制作标记？");
+            Assert.IsNotNull(State.Pending, adapter.LastResponse);
+            Assert.AreEqual(SessionState.SetBackTarget, State.Pending.TargetId);
+            Assert.IsFalse(State.E5Verified);
+            scene.ToggleDialogue();
+            ReachStage(ActionStage.Arrived);
+            WalkToDoorControl();
+            scene.InteractWithSetBack();
+            Step(60);
+            Assert.IsTrue(State.E5Verified);
+            Assert.IsFalse(State.RouteConfirmed);
+            ReachStage(ActionStage.Completed);
+            scene.ToggleDialogue();
+            yield return SendLive(flow, adapter, "刚才在门后你亲眼看见了什么？那能证明通道一定走得通吗？先告诉我你的判断。");
+            StringAssert.Contains("E5", adapter.LastPayload);
+            Assert.IsFalse(State.RouteConfirmed);
+            Assert.IsNull(State.Pending, adapter.LastResponse);
+            yield return SendLive(flow, adapter, "对不起。以前我替导演看过广播词，还故意带你绕开这道门。我怕失去这份工作，所以一直瞒着你。今天我带你来看，是想把决定权还给你。你完全有理由不信我，可以自己核查，走不走由你。");
+            Assert.IsTrue(State.IsConcernResolved("C2"), adapter.LastResponse);
+            Assert.IsFalse(State.EscapeAgreed);
+            Debug.Log("[Part C LIVE] E5 verified; route unchecked; C2 resolved; escape not agreed.");
+        }
+
+        private IEnumerator SendLive(PlayerInteraction flow, PartCDialogue adapter, string text)
+        {
+            flow.Send(text);
+            float deadline = Time.realtimeSinceStartup + 31;
+            while (scene.ModelWait && Time.realtimeSinceStartup < deadline) yield return null;
+            flow.Tick();
+            Assert.IsFalse(scene.ModelWait, "Gateway did not finish");
+            StringAssert.Contains("已接受", adapter.Outcome, adapter.LastResponse);
+            Assert.IsEmpty(flow.Draft);
+            Debug.Log("[Part C LIVE] " + adapter.LastResponse);
+        }
+
         private ActionTicket InviteLin()
         {
             scene.ToggleDialogue();

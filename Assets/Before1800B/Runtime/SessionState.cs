@@ -229,6 +229,13 @@ namespace Before1800.PartB
             return true;
         }
 
+        internal void ResolveTrustFromAcceptedTurn(string turnId)
+        {
+            if (concerns["C2"]) return;
+            concerns["C2"] = true;
+            Commit("C2 resolved from player turn " + turnId);
+        }
+
         // Represents a validated C2 decision for the state-panel demo only.
         internal bool TryResolveC2ForTest()
         {

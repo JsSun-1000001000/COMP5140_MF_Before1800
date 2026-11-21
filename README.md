@@ -18,6 +18,8 @@ Unity 桌面 3D 叙事解谜 POC：你扮演林最信任的朋友（实为参与
 
 ## 快速开始
 
+接手 Part C 请先读 [Part C 开发交接](docs/PartC_交接说明.md)，按新电脑启动步骤复现。准备演示时使用 [Part C 本地演示与六幕剧本](docs/PartC_本地演示.md) 中的玩家台词和现场操作。
+
 1. 安装 **Unity Hub + Unity 2021.3 LTS**，模板选 **3D (URP)** 对应版本即可打开本工程。  
 2. Clone 本仓库后用 Hub 打开项目根目录；首次打开会由 Package Manager 拉取依赖。  
 3. 在 Unity 的 Project 窗口打开 `Assets/Before1800Home/PartB_Residence.unity`，点 **Play**，按 **Enter** 进入住宅。独立测试场景在 `Assets/Before1800B/PartB_Greybox.unity`。  
