@@ -1,5 +1,5 @@
 {
     "name": "Before1800.PartB.Tests",
-    "references": ["Before1800.PartB"],
+    "references": ["Before1800.PartB", "UnityEngine.UI"],
     "optionalUnityReferences": ["TestAssemblies"]
 }

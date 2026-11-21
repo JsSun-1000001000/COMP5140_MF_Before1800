@@ -1,4 +1,5 @@
 {
     "name": "Before1800.PartB",
-    "rootNamespace": "Before1800.PartB"
+    "rootNamespace": "Before1800.PartB",
+    "references": ["UnityEngine.UI"]
 }
