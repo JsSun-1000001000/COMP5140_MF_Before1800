@@ -39,6 +39,9 @@ namespace Before1800.PartB
         public bool JournalOpen => journal != null;
         public bool ObservingSetBack => observingSetBack != null;
         public bool ObservingCamera => trackingCamera != null;
+        public float CameraLockProgress => trackingCamera == null || CameraTrackLockDuration <= 0f
+            ? 0f : Mathf.Clamp01(cameraLockSeconds / CameraTrackLockDuration);
+        public string CameraTrackHint { get; private set; }
         public bool CheckingRoute => checkingRouteRun != Guid.Empty;
         public bool ModelWait => State.HasPause(PauseReason.ModelWait);
         public bool TestPathBlocked => World.ObservationBlockedForTest;
@@ -133,7 +136,11 @@ namespace Before1800.PartB
             StepSetBackChecks(dt);
             StepCameraTracking(dt);
             // Surveillance runs for the whole session: the housing always faces Lin.
-            if (World.Camera) World.Camera.StepTrack(World.Lin, dt);
+            if (World.Camera)
+            {
+                World.Camera.StepTrack(World.Lin, dt);
+                World.Camera.StepSignal(dt);
+            }
             if (testCompletion != null)
             {
                 var ticket = testCompletion;
@@ -225,8 +232,10 @@ namespace Before1800.PartB
             if (!State.TryCompleteCameraExperiment(ticket, eventId)) return false;
             trackingCamera = null;
             cameraLockSeconds = 0f;
+            CameraTrackHint = "";
+            if (World.Camera) World.Camera.SetSignal(CameraSignal.Confirmed);
             World.ResetTravel();
-            Feedback = State.LastResult;
+            Feedback = "E1 verified. Lin saw the housing follow her.";
             return true;
         }
 
@@ -262,8 +271,10 @@ namespace Before1800.PartB
             }
             trackingCamera = ticket;
             cameraLockSeconds = 0f;
+            CameraTrackHint = "跟踪实验开始：林正走向第二个观察点，盯着镜头外壳。";
+            if (World.Camera) World.Camera.SetSignal(CameraSignal.Watching);
             World.ResetTravel();
-            Feedback = "Lin is moving to the second mark. Watch the camera housing.";
+            Feedback = CameraTrackHint;
             return true;
         }
 
@@ -289,25 +300,43 @@ namespace Before1800.PartB
             if (trackingCamera == null) return;
             if (trackingCamera != State.Active || State.Stage != ActionStage.Arrived || !World.Camera)
             {
-                trackingCamera = null;
-                cameraLockSeconds = 0f;
+                ClearCameraTracking(CameraSignal.Idle);
                 return;
             }
             var travel = World.StepCameraTrack(dt);
             if (travel == TravelResult.Failed)
             {
                 if (State.ReportFailure(trackingCamera, World.FailureCode)) ShowNavigationError();
-                trackingCamera = null;
-                cameraLockSeconds = 0f;
+                ClearCameraTracking(CameraSignal.Idle);
                 return;
             }
             if (travel == TravelResult.Arrived && World.Camera.TrackingVisible(World.Lin))
             {
+                if (cameraLockSeconds <= 0f) World.Camera.SetSignal(CameraSignal.Verifying);
                 cameraLockSeconds += dt;
+                int percent = Mathf.Clamp(Mathf.RoundToInt(CameraLockProgress * 100f), 1, 99);
+                CameraTrackHint = "第二观察点锁定中 " + percent + "% — 镜头正在对准林。";
+                Feedback = CameraTrackHint;
                 if (cameraLockSeconds >= CameraTrackLockDuration)
                     TryCompleteCameraExperiment(trackingCamera, Guid.NewGuid());
             }
-            else cameraLockSeconds = 0f;
+            else
+            {
+                cameraLockSeconds = 0f;
+                World.Camera.SetSignal(CameraSignal.Watching);
+                CameraTrackHint = travel == TravelResult.Arrived
+                    ? "林已到第二点，但镜头尚未对准。稍微退开，别挡住视线。"
+                    : "林正换到第二个观察点，镜头外壳应持续转向她。";
+                Feedback = CameraTrackHint;
+            }
+        }
+
+        private void ClearCameraTracking(CameraSignal signal)
+        {
+            trackingCamera = null;
+            cameraLockSeconds = 0f;
+            CameraTrackHint = "";
+            if (World.Camera) World.Camera.SetSignal(signal);
         }
 
         // Scene controls can call these entry points with the identities captured for this interaction.
@@ -396,6 +425,8 @@ namespace Before1800.PartB
             trackingCamera = null;
             checkingRouteRun = Guid.Empty;
             observationSeconds = routeSeconds = cameraLockSeconds = 0f;
+            CameraTrackHint = "";
+            if (World && World.Camera) World.Camera.SetSignal(CameraSignal.Idle);
         }
 
         public bool TryBeginModelRequest(out ModelRequest request)

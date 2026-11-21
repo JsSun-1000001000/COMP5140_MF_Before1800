@@ -3,6 +3,8 @@ using UnityEngine.AI;
 
 namespace Before1800.PartB
 {
+    public enum CameraSignal { Idle, Watching, Verifying, Confirmed }
+
     // Hidden camera that pans to follow Lin between two floor marks. E1 is only
     // written after the housing has tracked her to the second mark.
     public sealed class CameraStation : MonoBehaviour
@@ -15,6 +17,11 @@ namespace Before1800.PartB
 
         Quaternion restLocalRotation;
         bool hasRest;
+        Renderer signalLamp;
+        Material signalMaterial;
+        Color signalBase = new Color(.95f, .59f, .20f);
+        CameraSignal signal;
+        float pulse;
 
         public Transform Device => device ? device : transform;
         public Transform ObserveA => observeA;
@@ -47,6 +54,24 @@ namespace Before1800.PartB
             if (worldDelta.sqrMagnitude < .0001f) return;
             Quaternion worldLook = Quaternion.LookRotation(worldDelta.normalized, Vector3.up);
             housing.localRotation = Quaternion.Inverse(housing.parent.rotation) * worldLook;
+        }
+
+        public void SetSignal(CameraSignal value)
+        {
+            signal = value;
+            pulse = 0f;
+            EnsureSignalLamp();
+            ApplySignal(1f);
+        }
+
+        public void StepSignal(float dt)
+        {
+            if (!signalLamp) return;
+            pulse += dt;
+            float glow = signal == CameraSignal.Verifying ? .55f + .45f * Mathf.Abs(Mathf.Sin(pulse * 8f)) :
+                signal == CameraSignal.Watching ? .75f + .25f * Mathf.Abs(Mathf.Sin(pulse * 3f)) :
+                signal == CameraSignal.Confirmed ? 1f : .35f;
+            ApplySignal(glow);
         }
 
         public bool CanStartTracking(Transform view, Transform lin)
@@ -159,8 +184,62 @@ namespace Before1800.PartB
                 station.observeB.rotation = Quaternion.LookRotation(Flat(device.position - station.observeB.position));
             }
             PaintSecondMark(station.observeB, markMaterial);
+            station.EnsureSignalLamp();
+            station.SetSignal(CameraSignal.Idle);
             station.ResetPose();
             return station.IsAvailable ? station : null;
+        }
+
+        void EnsureSignalLamp()
+        {
+            if (signalLamp) return;
+            Transform lamp = FindNamed(Device, "Status lamp") ?? FindNamed(Device, "Recording light");
+            if (!lamp)
+            {
+                lamp = GameObject.CreatePrimitive(PrimitiveType.Sphere).transform;
+                lamp.name = "Status lamp";
+                lamp.SetParent(housing ? housing : Device, false);
+                lamp.localPosition = new Vector3(.12f, .06f, .14f);
+                lamp.localScale = new Vector3(.05f, .05f, .04f);
+                var collider = lamp.GetComponent<Collider>();
+                if (collider) collider.enabled = false;
+            }
+            signalLamp = lamp.GetComponent<Renderer>();
+            if (!signalLamp) return;
+            signalMaterial = new Material(signalLamp.sharedMaterial);
+            signalLamp.sharedMaterial = signalMaterial;
+            if (signalMaterial.HasProperty("_Color")) signalBase = signalMaterial.color;
+        }
+
+        void ApplySignal(float glow)
+        {
+            if (!signalMaterial) return;
+            Color tone = signal == CameraSignal.Confirmed ? new Color(1f, .28f, .22f) :
+                signal == CameraSignal.Verifying ? new Color(1f, .82f, .25f) :
+                signal == CameraSignal.Watching ? new Color(1f, .55f, .15f) : signalBase;
+            Color lit = Color.Lerp(tone * .25f, tone, Mathf.Clamp01(glow));
+            if (signalMaterial.HasProperty("_Color")) signalMaterial.color = lit;
+            if (signalMaterial.HasProperty("_BaseColor")) signalMaterial.SetColor("_BaseColor", lit);
+            if (signalMaterial.HasProperty("_EmissionColor"))
+            {
+                signalMaterial.EnableKeyword("_EMISSION");
+                signalMaterial.SetColor("_EmissionColor", lit * (glow * 2.2f));
+            }
+        }
+
+        static Transform FindNamed(Transform root, string name)
+        {
+            if (!root) return null;
+            var direct = root.Find(name);
+            if (direct) return direct;
+            for (int i = 0; i < root.childCount; i++)
+            {
+                var child = root.GetChild(i);
+                if (child.name == name) return child;
+                var nested = FindNamed(child, name);
+                if (nested) return nested;
+            }
+            return null;
         }
 
         static Transform FindHousing(Transform device)

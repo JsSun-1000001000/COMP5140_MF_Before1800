@@ -35,6 +35,7 @@ namespace Before1800.PartB
         private int displayedMinute = -1;
         private ulong journalVersion;
         private bool journalStation;
+        private bool sawE1Verified;
         private SessionState State => scene.State;
         private GreyboxWorld World => scene.World;
 
@@ -42,6 +43,21 @@ namespace Before1800.PartB
         {
             this.scene = scene;
             runId = State.RunId;
+            sawE1Verified = State.E1Verified;
+        }
+
+        // Called each UI frame so success banners appear as soon as evidence is written.
+        public void SyncWorldFeedback()
+        {
+            if (runId != State.RunId)
+            {
+                runId = State.RunId;
+                sawE1Verified = State.E1Verified;
+                return;
+            }
+            if (State.E1Verified && !sawE1Verified)
+                Flash("手记已更新：林亲眼确认镜头会跟随她。按 J 查看。", 5.5f);
+            sawE1Verified = State.E1Verified;
         }
 
         public bool DebugOpen { get; set; }
@@ -156,14 +172,18 @@ namespace Before1800.PartB
                 if (Time.unscaledTime < transientUntil && transient.Length > 0) return transient;
                 if (scene.CheckingRoute) return "正在检查通道，保持面向检查牌。";
                 if (scene.ObservingSetBack) return "林在辨认支架和标记，给她留出视线。";
-                if (scene.ObservingCamera) return "林正在换到第二个观察点。镜头会一直跟着她，确认外壳仍在转向。";
+                if (scene.ObservingCamera)
+                    return string.IsNullOrEmpty(scene.CameraTrackHint)
+                        ? "跟踪实验进行中：看镜头外壳是否跟着林转。"
+                        : scene.CameraTrackHint;
                 if (State.Stage == ActionStage.Arrived)
                     return State.Active?.TargetId == SessionState.SetBackTarget
                         ? "林到了维修门边。靠近门旁的控制器，请她一起观察。"
-                        : "林到了第一个观察点。对准镜头按 E，请她换到第二个点完成跟踪验证。";
+                        : "林到了第一个观察点。对准镜头按 E，开始跟踪验证（会显示锁定进度）。";
                 if (State.Stage == ActionStage.Returning)
                     return State.Active?.TargetId == SessionState.SetBackTarget
-                        ? "林看清了布景支架，正在往回走。" : "林亲眼看见镜头跟随转动，正在往回走。";
+                        ? "林看清了布景支架，正在往回走。"
+                        : "E1 已确认。林亲眼看见镜头跟随，正在往回走。按 J 可回看手记。";
                 return "";
             }
         }
@@ -331,7 +351,7 @@ namespace Before1800.PartB
                 case Focus.TrackCamera:
                     if (!scene.TryBeginCameraTracking(State.Active))
                         Flash("对准镜头，并确认林站在第一个金色观察点上。");
-                    else transient = "";
+                    else Flash("跟踪开始：林会走到第二个点，镜头指示灯会亮起。", 4f);
                     break;
                 case Focus.OpenDoor:
                     scene.InteractWithSetBack();
@@ -473,10 +493,10 @@ namespace Before1800.PartB
             Draft = prompt = "";
         }
 
-        private void Flash(string message)
+        private void Flash(string message, float seconds = 3.5f)
         {
             transient = message;
-            transientUntil = Time.unscaledTime + 3.5f;
+            transientUntil = Time.unscaledTime + seconds;
         }
     }
 }

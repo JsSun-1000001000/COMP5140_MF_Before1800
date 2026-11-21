@@ -79,6 +79,7 @@ namespace Before1800.PartB
         private void LateUpdate()
         {
             if (flow == null || !visible) return;
+            flow.SyncWorldFeedback();
             if (Editing && !string.IsNullOrEmpty(Input.compositionString)) lastCompositionFrame = Time.frameCount;
             Refresh();
             if (Input.GetKeyDown(KeyCode.Tab) && string.IsNullOrEmpty(Input.compositionString))
