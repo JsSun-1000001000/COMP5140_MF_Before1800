@@ -45,11 +45,11 @@
 场景根对象上的 `Before1800.PartB.PartBScene` 提供入口，均在 Unity 主线程调用。A 或 C 使用独立 asmdef 时，添加对 `Before1800.PartB` 的引用。灰盒有 `camera_test` 和 `set_back` 两个调查目标；住宅目前只配置了摄像头。
 
 - **A：摄像头。** 订阅 `scene.ObservationReady`，按 `ticket.TargetId` 分发。若为 `camera_test`，在本次设备实验开始时保存收到的 `ActionTicket`。实验真正完成时调用 `scene.TryCompleteCameraExperiment(ticket, eventId)`。每个结果用一个非空 `Guid`，重发沿用原 ID。回调要带回开始时保存的票据；临时读取 `State.Active` 会丢失旧回调的身份。
-- **A：维修门。** 在 `GreyboxWorld` 的场景层级挂 `SetBackStation`，指定门轴、控制器、观察点、支架与制作标记的 Renderer、路线检查点、检查牌、通道终点及禁止跟随的触发区。可绑定单独的返程点和通道阻挡物。门站与检查点保留在同一场景的可走导航网格上。场景交互可用 `scene.InteractWithSetBack()`，也可以从控制器在玩家操作时调用 `scene.TryBeginSetBackObservation(ticket)` 或 `scene.TryBeginRouteCheck(runId)`。B 复核位置、视线、时间和通行状态并分别写入结果。
+- **A：维修门。** 在 `GreyboxWorld` 的场景层级挂 `SetBackStation`，指定门轴、控制器、观察点、支架与制作标记的 Renderer、路线检查点、检查牌、通道终点及禁止跟随的触发区。可绑定单独的返程点和通道阻挡物。门站与检查点保留在同一场景的可走导航网格上。场景交互可用 `scene.InteractWithSetBack()`，也可以从控制器在玩家操作时调用 `scene.TryBeginSetBackObservation(ticket)` 或 `scene.TryBeginRouteCheck(runId)`。B 复核位置、视线、时间和通行状态并分别写入结果。**住宅场景**在运行时自动生成东墙紧凑壁橱（`BuildResidenceAlcove`），不占用灰盒翼楼空间；灰盒仍用完整测试站。
 - **C** 在对话打开时调用 `scene.TryBeginModelRequest(out var request)`，读取 `request.Snapshot`。返回动作前由 C 校验输出，在主线程调用 `scene.TryApplyModelAction(request, action, targetId, out var reason)`。支持 `reply/null`、`follow/player`、`inspect/camera_test`、`inspect/set_back`、`withdraw/null`。C 可以用 `scene.World.CanInspect(targetId)` 查询场景可达性，B 在接收指令时会再检查。取消或出错时调用 `scene.TryCancelModelRequest(request)`。关闭对话或重开会使旧请求失效。
 - **下一轮上下文** 可通过 `JsonUtility.ToJson(request.Snapshot)` 序列化。`verified_evidence` 与 `route_confirmed` 分别表示林亲见的事实和玩家已查通的路线。`last_action_result` 与 `recent_action_results` 保留最近 16 条现场结果，含动作、目标、动作/实验 ID、到达、验证、完成、失败原因及返回重试来源。正式说服、共同逃离与真实模型留给后续集成。
 
-场景、房间材质及预烘焙 NavMesh 都在 `Assets/Before1800B/`。其中 `Runtime/` 放状态、场景协调、角色运动和面板，`Tests/` 放场景测试。复测时进入 **Window → General → Test Runner → PlayMode**，运行 `PartBPlayModeTests`。
+场景、房间材质及预烘焙 NavMesh 都在 `Assets/Before1800B/`（住宅导航在 `Assets/Before1800Home/`）。其中 `Runtime/` 放状态、场景协调、角色运动和面板，`Tests/` 放场景测试。复测时进入 **Window → General → Test Runner → PlayMode**，运行 `PartBPlayModeTests`。
 
 ## 实现者实测 · 2026-11-20
 
