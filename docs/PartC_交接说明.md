@@ -4,7 +4,7 @@
 
 ## 在新电脑上复现
 
-1. 在项目仓库中运行 `git fetch origin` 和 `git switch codex/part-c-deepseek`。本分支包含 [Part B 玩家界面 #4](https://github.com/JsSun-1000001000/COMP5140_MF_Before1800/pull/4)、住宅试玩和 [Unity 依赖锁 #3](https://github.com/JsSun-1000001000/COMP5140_MF_Before1800/pull/3)。
+1. 在项目仓库中运行 `git fetch origin` 和 `git switch main`（Part C 已于 2026-11-21 合入 `main`）。
 2. 使用 Windows、Unity **2021.3.35f1** 和 Python **3.12–3.14**。从仓库根目录在 PowerShell 运行 `.\service\setup.ps1`。脚本会建立虚拟环境，并在首次安装时从模板生成 `service/.env`。在该文件的 `LLM_API_KEY` 填自己可用的 DeepSeek 密钥，其余可使用模板中的 `deepseek-flash` 配置。密钥只保存在网关所在电脑。
 3. **编辑器试玩**：运行 `.\service\start.ps1 -Port 8180` 并保留窗口。打开 `Assets/Before1800B/PartB_Greybox.unity`，点 Play。**Windows 独立试玩**：在 Unity 菜单选择 **Before 1800 → Build Part C Windows Demo**，完成后双击项目根目录的 `Run-PartC.cmd`。新克隆需要先做这次构建。
 4. 开始探索后按 **F2** 启用 DeepSeek，面对林按 **E**，在自由输入框发送台词。**F3** 显示请求、实际回复、接受结果和现场状态，**J** 查看手记。三个可复制的输入、门控操作和预期状态见[本地演示与六幕剧本](PartC_本地演示.md)。
