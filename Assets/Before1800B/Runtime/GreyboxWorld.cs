@@ -19,6 +19,7 @@ namespace Before1800.PartB
         [SerializeField] NavMeshData navigationData;
         [SerializeField] Material[] layoutMaterials;
         [SerializeField] bool usesSceneBindings;
+        [SerializeField] SetBackStation setBackStation;
 
         NavMeshDataInstance navigation;
         Transform namePlate;
@@ -51,6 +52,7 @@ namespace Before1800.PartB
         public Camera ViewCamera => view;
         public Transform ObservationPoint => observationPoint;
         public Transform CameraTarget => cameraTarget;
+        public SetBackStation Station => setBackStation && setBackStation.IsAvailable ? setBackStation : null;
         public NavMeshData NavigationData => navigationData;
         public bool UsesSceneBindings => usesSceneBindings;
         // The visual rig can glance toward the current waypoint before the body finishes turning.
@@ -61,6 +63,18 @@ namespace Before1800.PartB
         public bool ObservationBlockedForTest { get; private set; }
         public bool CanReachObservation => initialized && ObservationAvailable &&
             PathTo(observationPoint.position, new NavMeshPath());
+        public bool CanInspect(string targetId)
+        {
+            if (targetId == SessionState.CameraTarget) return CanReachObservation;
+            return initialized && targetId == SessionState.SetBackTarget && Station &&
+                PathTo(Station.ObservationPoint.position, new NavMeshPath());
+        }
+
+        public bool AtObservation(string targetId)
+        {
+            if (targetId == SessionState.CameraTarget) return IsAtObservation;
+            return initialized && targetId == SessionState.SetBackTarget && Station && Station.AtObservation(Lin);
+        }
         bool ObservationAvailable => observationPoint && cameraTarget &&
             observationPoint.gameObject.activeInHierarchy && cameraTarget.gameObject.activeInHierarchy;
 
@@ -86,6 +100,24 @@ namespace Before1800.PartB
                 return initialized && Physics.Raycast(view.transform.position, view.transform.forward, out hit, 2f,
                     Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore) && IsCameraCollider(hit.transform);
             }
+        }
+
+        public bool CanTalkToLin => initialized &&
+            (CanFocus(Lin, Lin.position + Vector3.up * 1.52f, 2.65f, 32f) ||
+             CanFocus(Lin, Lin.position + Vector3.up * 1.20f, 2.65f, 28f));
+
+        // Camera props are small and above eye level. A narrow cone avoids a
+        // pixel-perfect click while the sight ray still respects walls and furniture.
+        public bool CanExamineCamera => initialized && cameraTarget && cameraTarget.gameObject.activeInHierarchy &&
+            (CanDiscoverCamera || CanFocus(cameraTarget, cameraTarget.position, 2.65f, 8f));
+
+        bool CanFocus(Transform target, Vector3 point, float distance, float angle)
+        {
+            Vector3 origin = view.transform.position;
+            Vector3 delta = point - origin;
+            if (!target.gameObject.activeInHierarchy || delta.sqrMagnitude > distance * distance ||
+                Vector3.Angle(view.transform.forward, delta) > angle) return false;
+            return InteractionSight.Clear(origin, delta, Player, target);
         }
 
         // The residence builder supplies its own room, actors and baked navigation data.
@@ -157,6 +189,9 @@ namespace Before1800.PartB
             navigation = NavMesh.AddNavMeshData(navigationData);
             if (!navigation.valid)
                 throw new System.InvalidOperationException("Could not register the Part B scene NavMesh.");
+            if (!setBackStation) setBackStation = GetComponentInChildren<SetBackStation>(true);
+            if (!setBackStation && !usesSceneBindings)
+                setBackStation = SetBackStation.BuildGreybox(transform, layoutMaterials, returnPoint);
             openObservationPoint = observationPoint.position;
             namePlate = Lin.Find("Name plate");
             nameLabel = Lin.Find("Lin name");
@@ -167,6 +202,7 @@ namespace Before1800.PartB
         public void ResetWorld()
         {
             SetObservationBlockedForTest(false);
+            if (setBackStation) setBackStation.ResetDoor();
             ResetActor(player, playerStart);
             ResetActor(lin, returnPoint);
             pitch = 0f;
@@ -206,19 +242,36 @@ namespace Before1800.PartB
             FaceNamePlateToPlayer();
         }
 
-        public TravelResult StepInspect(float dt)
+        public TravelResult StepInspect(float dt) => StepInspect(SessionState.CameraTarget, dt);
+
+        public TravelResult StepInspect(string targetId, float dt)
         {
-            if (!ObservationAvailable)
+            Transform goal, focus;
+            if (targetId == SessionState.CameraTarget && ObservationAvailable)
+            {
+                goal = observationPoint;
+                focus = cameraTarget;
+            }
+            else if (targetId == SessionState.SetBackTarget && Station)
+            {
+                goal = Station.ObservationPoint;
+                focus = Station.SetMark;
+            }
+            else
                 return Fail("RC_NAV_NO_PATH");
-            var result = Travel(observationPoint.position, ArrivalRadius, dt);
+            var result = Travel(goal.position, ArrivalRadius, dt);
             if (result != TravelResult.Arrived) return result;
-            if (!Face(cameraTarget.position, dt)) return TravelResult.Moving;
-            return IsAtObservation ? TravelResult.Arrived : Fail("RC_OBSERVATION_BLOCKED");
+            if (!Face(focus.position, dt)) return TravelResult.Moving;
+            return AtObservation(targetId) ? TravelResult.Arrived : Fail("RC_OBSERVATION_BLOCKED");
         }
 
-        public TravelResult StepFollow(float dt)
+        public TravelResult StepFollow(float dt) => StepFollow(dt, false);
+
+        public TravelResult StepFollow(float dt, bool passageAllowed)
         {
-            var result = Travel(Player.position, 1.4f, dt);
+            bool waitAtBoundary = !passageAllowed && Station && Station.InRestrictedArea(Player.position);
+            Vector3 goal = waitAtBoundary ? Station.ObservationPoint.position : Player.position;
+            var result = Travel(goal, waitAtBoundary ? ArrivalRadius : 1.4f, dt, !passageAllowed);
             if (result == TravelResult.Arrived) Face(Player.position, dt);
             return result;
         }
@@ -230,14 +283,18 @@ namespace Before1800.PartB
             return result;
         }
 
-        public TravelResult StepReturn(float dt)
+        public TravelResult StepReturn(float dt) => StepReturn(SessionState.CameraTarget, dt);
+
+        public TravelResult StepReturn(string targetId, float dt)
         {
-            var result = Travel(returnPoint.position, ArrivalRadius, dt);
+            Transform destination = targetId == SessionState.SetBackTarget && Station && Station.ReturnPoint
+                ? Station.ReturnPoint : returnPoint;
+            var result = Travel(destination.position, ArrivalRadius, dt);
             if (result == TravelResult.Arrived && !Face(Player.position, dt)) return TravelResult.Moving;
             return result;
         }
 
-        TravelResult Travel(Vector3 goal, float stoppingDistance, float dt)
+        TravelResult Travel(Vector3 goal, float stoppingDistance, float dt, bool restrictPassage = false)
         {
             if (FailureCode.Length > 0) return TravelResult.Failed;
             bool following = stoppingDistance > ArrivalRadius;
@@ -280,6 +337,12 @@ namespace Before1800.PartB
                 speed = alignment > .5f ? walkingSpeed : 0f;
             }
             var step = Vector3.ClampMagnitude(delta, speed * dt);
+            if (restrictPassage && Station && Station.InRestrictedArea(Lin.position + step))
+            {
+                walkingSpeed = 0f;
+                corners = null;
+                return TravelResult.Arrived;
+            }
             lin.Move(step + Vector3.down * (.9f * dt));
             progress += delta.magnitude - Flat(waypoint - Lin.position).magnitude;
             RemainingDistance = Flat(waypoint - Lin.position).magnitude;
@@ -364,6 +427,37 @@ namespace Before1800.PartB
             if (navigationData) Destroy(navigationData);
             if (layoutMaterials != null)
                 foreach (var material in layoutMaterials) if (material) Destroy(material);
+        }
+    }
+
+    internal static class InteractionSight
+    {
+        private static readonly RaycastHit[] buffer = new RaycastHit[12];
+
+        internal static bool Clear(Vector3 origin, Vector3 delta, Transform observer, Transform target)
+        {
+            // The eye can sit on the rim of the player's CharacterController. Ignore
+            // that actor only, keeping the nearest wall, prop or intended target.
+            int count = Physics.RaycastNonAlloc(origin, delta.normalized, buffer, delta.magnitude,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            var hits = buffer;
+            if (count == hits.Length)
+            {
+                hits = Physics.RaycastAll(origin, delta.normalized, delta.magnitude,
+                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                count = hits.Length;
+            }
+            float nearest = float.PositiveInfinity;
+            Transform first = null;
+            for (int i = 0; i < count; i++)
+            {
+                var hit = hits[i];
+                var item = hit.collider.transform;
+                if ((observer && item.IsChildOf(observer)) || hit.distance >= nearest) continue;
+                first = item;
+                nearest = hit.distance;
+            }
+            return !first || first.IsChildOf(target);
         }
     }
 }
