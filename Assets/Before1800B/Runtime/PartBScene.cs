@@ -132,6 +132,8 @@ namespace Before1800.PartB
             StepLin(dt);
             StepSetBackChecks(dt);
             StepCameraTracking(dt);
+            // Surveillance runs for the whole session: the housing always faces Lin.
+            if (World.Camera) World.Camera.StepTrack(World.Lin, dt);
             if (testCompletion != null)
             {
                 var ticket = testCompletion;

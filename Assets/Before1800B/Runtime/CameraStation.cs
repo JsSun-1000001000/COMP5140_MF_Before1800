@@ -11,7 +11,7 @@ namespace Before1800.PartB
         [SerializeField] Transform housing;
         [SerializeField] Transform observeA;
         [SerializeField] Transform observeB;
-        [SerializeField] float panSpeed = 95f;
+        [SerializeField] float panSpeed = 140f;
 
         Quaternion restLocalRotation;
         bool hasRest;
@@ -32,6 +32,21 @@ namespace Before1800.PartB
                 hasRest = true;
             }
             housing.localRotation = restLocalRotation;
+        }
+
+        // Used on scene start / restart so the housing already faces Lin.
+        public void SnapTo(Transform lin)
+        {
+            if (!IsAvailable || !lin) return;
+            if (!hasRest)
+            {
+                restLocalRotation = housing.localRotation;
+                hasRest = true;
+            }
+            Vector3 worldDelta = lin.position + Vector3.up * 1.55f - housing.position;
+            if (worldDelta.sqrMagnitude < .0001f) return;
+            Quaternion worldLook = Quaternion.LookRotation(worldDelta.normalized, Vector3.up);
+            housing.localRotation = Quaternion.Inverse(housing.parent.rotation) * worldLook;
         }
 
         public bool CanStartTracking(Transform view, Transform lin)

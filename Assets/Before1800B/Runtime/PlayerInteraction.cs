@@ -156,11 +156,11 @@ namespace Before1800.PartB
                 if (Time.unscaledTime < transientUntil && transient.Length > 0) return transient;
                 if (scene.CheckingRoute) return "正在检查通道，保持面向检查牌。";
                 if (scene.ObservingSetBack) return "林在辨认支架和标记，给她留出视线。";
-                if (scene.ObservingCamera) return "林正在换到第二个观察点。盯着镜头外壳，看它是否跟着转。";
+                if (scene.ObservingCamera) return "林正在换到第二个观察点。镜头会一直跟着她，确认外壳仍在转向。";
                 if (State.Stage == ActionStage.Arrived)
                     return State.Active?.TargetId == SessionState.SetBackTarget
                         ? "林到了维修门边。靠近门旁的控制器，请她一起观察。"
-                        : "林到了第一个观察点。对准镜头按 E，请她换到第二个点并观察镜头是否跟随。";
+                        : "林到了第一个观察点。对准镜头按 E，请她换到第二个点完成跟踪验证。";
                 if (State.Stage == ActionStage.Returning)
                     return State.Active?.TargetId == SessionState.SetBackTarget
                         ? "林看清了布景支架，正在往回走。" : "林亲眼看见镜头跟随转动，正在往回走。";

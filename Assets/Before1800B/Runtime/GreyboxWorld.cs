@@ -209,9 +209,9 @@ namespace Before1800.PartB
         {
             SetObservationBlockedForTest(false);
             if (setBackStation) setBackStation.ResetDoor();
-            if (cameraStation) cameraStation.ResetPose();
             ResetActor(player, playerStart);
             ResetActor(lin, returnPoint);
+            if (cameraStation) cameraStation.SnapTo(Lin);
             pitch = 0f;
             view.transform.localRotation = Quaternion.identity;
             FaceNamePlateToPlayer();
@@ -272,11 +272,11 @@ namespace Before1800.PartB
             return AtObservation(targetId) ? TravelResult.Arrived : Fail("RC_OBSERVATION_BLOCKED");
         }
 
-        // During the live E1 experiment Lin walks from mark A to mark B while the housing pans.
+        // During the live E1 experiment Lin walks from mark A to mark B.
+        // The housing itself always pans from PartBScene so it follows Lin all session.
         public TravelResult StepCameraTrack(float dt)
         {
             if (!Camera) return Fail("RC_OBSERVATION_BLOCKED");
-            Camera.StepTrack(Lin, dt);
             var result = Travel(Camera.ObserveB.position, ArrivalRadius, dt);
             if (result != TravelResult.Arrived) return result;
             if (!Face(cameraTarget.position, dt)) return TravelResult.Moving;
