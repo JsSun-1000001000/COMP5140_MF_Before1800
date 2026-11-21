@@ -87,11 +87,21 @@ namespace Before1800.PartB
             {
                 actions.Add("follow");
                 if (!scene.State.E1Verified && scene.World.CanInspect(SessionState.CameraTarget)) targets.Add(SessionState.CameraTarget);
+                if (!scene.State.E4Verified && scene.World.CanInspect(SessionState.BroadcastTarget)) targets.Add(SessionState.BroadcastTarget);
                 if (!scene.State.E5Verified && scene.World.CanInspect(SessionState.SetBackTarget)) targets.Add(SessionState.SetBackTarget);
                 if (targets.Count > 1) actions.Add("inspect");
             }
 
             var observations = new List<string> { "当前动作阶段：" + s.action_stage };
+            if (scene.World.Tv)
+            {
+                var tv = scene.World.Tv;
+                observations.Add(tv.HasPrediction
+                    ? "电视预测已锁定：" + tv.PredictedEventId + "；阶段=" + tv.Phase
+                    : "客厅电视可做 E4 预测实验；尚未锁定预测。");
+                if (tv.DisplayedProgram != TvProgram.None)
+                    observations.Add("电视当前画面：" + TvStation.LabelFor(tv.DisplayedProgram));
+            }
             if (scene.World.Station)
                 observations.Add(scene.World.Station.DoorOpen ? "维修门已打开；门开本身不能证明路线或布景。" : "现场维修门关闭。");
             var input = new Input {

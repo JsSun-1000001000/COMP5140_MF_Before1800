@@ -39,9 +39,11 @@ namespace Before1800.PartB
         public bool JournalOpen => journal != null;
         public bool ObservingSetBack => observingSetBack != null;
         public bool ObservingCamera => trackingCamera != null;
+        public bool ObservingBroadcast => observingBroadcast != null;
         public float CameraLockProgress => trackingCamera == null || CameraTrackLockDuration <= 0f
             ? 0f : Mathf.Clamp01(cameraLockSeconds / CameraTrackLockDuration);
         public string CameraTrackHint { get; private set; }
+        public string BroadcastHint { get; private set; }
         public bool CheckingRoute => checkingRouteRun != Guid.Empty;
         public bool ModelWait => State.HasPause(PauseReason.ModelWait);
         public bool TestPathBlocked => World.ObservationBlockedForTest;
@@ -57,6 +59,7 @@ namespace Before1800.PartB
         private ActionTicket testCompletion;
         private ActionTicket observingSetBack;
         private ActionTicket trackingCamera;
+        private ActionTicket observingBroadcast;
         private Guid checkingRouteRun;
         private float observationSeconds, routeSeconds, cameraLockSeconds;
         private const float SetBackObservationDuration = 2f;
@@ -85,6 +88,7 @@ namespace Before1800.PartB
             intro = dialogue = menu = journal = testWait = navigationError = null;
             testCompletion = null;
             ResetSetBackChecks();
+            ClearBroadcastObservation();
             World.ResetWorld();
             EnterIntro();
         }
@@ -121,6 +125,7 @@ namespace Before1800.PartB
             {
                 testCompletion = null;
                 ResetSetBackChecks();
+                ClearBroadcastObservation();
                 Feedback = State.LastResult;
                 ApplySimulationGate();
                 return;
@@ -135,6 +140,7 @@ namespace Before1800.PartB
             StepLin(dt);
             StepSetBackChecks(dt);
             StepCameraTracking(dt);
+            StepBroadcastWatch(dt);
             // Surveillance runs for the whole session: the housing always faces Lin.
             if (World.Camera)
             {
@@ -163,6 +169,7 @@ namespace Before1800.PartB
                     return;
                 case ActionStage.Arrived:
                     if (trackingCamera != null && ticket == trackingCamera) return;
+                    if (observingBroadcast != null && ticket == observingBroadcast) return;
                     if (!World.AtObservation(ticket.TargetId) && State.ReportObservationLost(ticket)) ShowNavigationError();
                     return;
                 case ActionStage.Returning:
@@ -246,6 +253,8 @@ namespace Before1800.PartB
             if (State.Stage == ActionStage.Arrived && State.Active?.TargetId == SessionState.CameraTarget &&
                 World.Camera && World.Camera.CanStartTracking(World.ViewCamera.transform, World.Lin))
                 return "[F] Ask Lin to change marks and watch the camera";
+            string tvHint = BroadcastInteractionHint();
+            if (tvHint != null) return tvHint;
             var station = World.Station;
             if (!station) return null;
             if (checkingRouteRun != Guid.Empty) return "Checking the passage. Stay here and face the sign.";
@@ -256,6 +265,116 @@ namespace Before1800.PartB
             if (State.Stage == ActionStage.Arrived && State.Active?.TargetId == SessionState.SetBackTarget &&
                 station.CanStartObservation(view)) return "[F] Ask Lin to look behind the set";
             return null;
+        }
+
+        public string BroadcastInteractionHint()
+        {
+            if (State.IsPaused || !World.Tv || State.E4Verified) return null;
+            var tv = World.Tv;
+            var view = World.ViewCamera.transform;
+            bool atTv = State.Stage == ActionStage.Arrived && State.Active?.TargetId == SessionState.BroadcastTarget &&
+                World.AtObservation(SessionState.BroadcastTarget);
+            if (!atTv) return null;
+            if (!tv.PlayerCanOperate(view)) return "对准客厅电视，继续 E4 实验";
+            if (tv.CanStartSequence) return "[F] 启动电视序列（预测已锁定）";
+            if (tv.CanConfirmPredictedShow)
+                return "[F] 请林点播预测节目：" + TvStation.LabelFor(tv.PredictedProgram);
+            if (tv.CanIntervene)
+                return "[F] 请林改口点播：" + TvStation.LabelFor(TvStation.AlternateFor(tv.PredictedProgram));
+            if (tv.Phase == TvPhase.Failed) return "预测失败。回对话重新登记后重试";
+            if (!tv.HasPrediction) return "先在对话里登记预测，再启动";
+            return null;
+        }
+
+        public bool TryRegisterTvPrediction(TvProgram program, out string reason)
+        {
+            reason = "客厅电视还没准备好。";
+            if (State.E4Verified || !World.Tv) return false;
+            // Dialogue pause is allowed: prediction must be locked before the live sequence.
+            if (World.Tv.Phase == TvPhase.Running || World.Tv.Phase == TvPhase.Step1Matched)
+                return World.Tv.TryRegisterPrediction(program, out reason);
+            bool ok = World.Tv.TryRegisterPrediction(program, out reason);
+            if (ok) Feedback = reason;
+            return ok;
+        }
+
+        public bool TryLinRequestTvShow(TvProgram program, out string reason)
+        {
+            reason = "现在不能点播。";
+            // Dialogue may stay open while choosing the requested show (example 3 mismatch).
+            if (State.TimedOut || !World.Tv || observingBroadcast == null || observingBroadcast != State.Active)
+                return false;
+            if (State.Stage != ActionStage.Arrived) return false;
+            if (!World.AtObservation(SessionState.BroadcastTarget))
+            {
+                if (!State.IsPaused && State.ReportObservationLost(observingBroadcast)) ShowNavigationError();
+                ClearBroadcastObservation();
+                return false;
+            }
+            bool matched = World.Tv.TryLinRequestShow(program, out reason);
+            Feedback = reason;
+            BroadcastHint = reason;
+            if (!matched)
+            {
+                // Prediction mismatch: experiment fails; ticket stays arrived so the player can re-register.
+                ClearBroadcastObservation();
+                return false;
+            }
+            return true;
+        }
+
+        public void InteractWithBroadcast()
+        {
+            if (State.IsPaused || !World.Tv || State.E4Verified) return;
+            var tv = World.Tv;
+            var ticket = State.Active;
+            if (ticket == null || ticket.TargetId != SessionState.BroadcastTarget || State.Stage != ActionStage.Arrived)
+                return;
+            if (!World.AtObservation(SessionState.BroadcastTarget))
+            {
+                if (State.ReportObservationLost(ticket)) ShowNavigationError();
+                ClearBroadcastObservation();
+                return;
+            }
+            if (!tv.PlayerCanOperate(World.ViewCamera.transform))
+            {
+                Feedback = tv.DescribeBlock(World.ViewCamera.transform, World.Lin, true);
+                return;
+            }
+
+            if (tv.CanStartSequence)
+            {
+                if (!tv.TryStartSequence(out var started))
+                {
+                    Feedback = started;
+                    return;
+                }
+                observingBroadcast = ticket;
+                BroadcastHint = started;
+                Feedback = started;
+                State.Discover(SessionState.BroadcastTarget);
+                return;
+            }
+
+            if (tv.CanConfirmPredictedShow)
+            {
+                TryLinRequestTvShow(tv.PredictedProgram, out _);
+                return;
+            }
+
+            if (tv.CanIntervene)
+            {
+                if (!tv.TryIntervene(out var intervened))
+                {
+                    Feedback = intervened;
+                    BroadcastHint = intervened;
+                    ClearBroadcastObservation();
+                    return;
+                }
+                Feedback = intervened;
+                BroadcastHint = intervened;
+                TryCompleteBroadcastExperiment(ticket, Guid.NewGuid());
+            }
         }
 
         public bool TryBeginCameraTracking(ActionTicket ticket)
@@ -283,6 +402,11 @@ namespace Before1800.PartB
         {
             if (State.IsPaused) return;
             if (TryBeginCameraTracking(State.Active)) return;
+            if (State.Active?.TargetId == SessionState.BroadcastTarget)
+            {
+                InteractWithBroadcast();
+                return;
+            }
             var station = World.Station;
             if (!station) return;
             var view = World.ViewCamera.transform;
@@ -433,6 +557,42 @@ namespace Before1800.PartB
             return true;
         }
 
+        private void StepBroadcastWatch(float _)
+        {
+            if (observingBroadcast == null) return;
+            if (observingBroadcast != State.Active || State.Stage != ActionStage.Arrived || !World.Tv)
+            {
+                ClearBroadcastObservation();
+                return;
+            }
+            if (!World.AtObservation(SessionState.BroadcastTarget))
+            {
+                if (State.ReportObservationLost(observingBroadcast)) ShowNavigationError();
+                if (World.Tv.Phase == TvPhase.Running || World.Tv.Phase == TvPhase.Step1Matched)
+                    World.Tv.ResetStation();
+                ClearBroadcastObservation();
+                Feedback = "林离开了电视前，本次序列中断。可重新登记预测。";
+            }
+        }
+
+        internal bool TryCompleteBroadcastExperiment(ActionTicket ticket, Guid eventId)
+        {
+            if (ticket == null || ticket != observingBroadcast || !World.Tv || !World.Tv.IsComplete ||
+                !World.AtObservation(SessionState.BroadcastTarget) ||
+                !State.TryCompleteBroadcastExperiment(ticket, eventId)) return false;
+            ClearBroadcastObservation();
+            World.ResetTravel();
+            Feedback = "E4 verified. 林确认电视会按她想看的节目切换。";
+            BroadcastHint = Feedback;
+            return true;
+        }
+
+        private void ClearBroadcastObservation()
+        {
+            observingBroadcast = null;
+            BroadcastHint = "";
+        }
+
         private void ResetSetBackChecks()
         {
             observingSetBack = null;
@@ -440,7 +600,9 @@ namespace Before1800.PartB
             checkingRouteRun = Guid.Empty;
             observationSeconds = routeSeconds = cameraLockSeconds = 0f;
             CameraTrackHint = "";
+            ClearBroadcastObservation();
             if (World && World.Camera) World.Camera.SetSignal(CameraSignal.Idle);
+            if (World && World.Tv && !State.E4Verified) World.Tv.ResetStation();
         }
 
         public bool TryBeginModelRequest(out ModelRequest request)
@@ -511,10 +673,12 @@ namespace Before1800.PartB
 
         private bool TryPropose(Guid run, ulong version, string action, string targetId, out string reason)
         {
-            if (action == "inspect" && (targetId == SessionState.CameraTarget || targetId == SessionState.SetBackTarget)
+            if (action == "inspect" && (targetId == SessionState.CameraTarget ||
+                targetId == SessionState.SetBackTarget || targetId == SessionState.BroadcastTarget)
                 && !World.CanInspect(targetId))
             {
                 reason = targetId == SessionState.CameraTarget ? "Camera observation point is unreachable." :
+                    targetId == SessionState.BroadcastTarget ? "TV observation point is unavailable or unreachable." :
                     "Set-back observation point is unavailable or unreachable.";
                 return false;
             }

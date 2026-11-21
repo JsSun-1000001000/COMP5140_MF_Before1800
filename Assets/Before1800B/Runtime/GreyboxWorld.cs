@@ -21,6 +21,7 @@ namespace Before1800.PartB
         [SerializeField] bool usesSceneBindings;
         [SerializeField] SetBackStation setBackStation;
         [SerializeField] CameraStation cameraStation;
+        [SerializeField] TvStation tvStation;
 
         NavMeshDataInstance navigation;
         Transform namePlate;
@@ -55,6 +56,7 @@ namespace Before1800.PartB
         public Transform CameraTarget => cameraTarget;
         public SetBackStation Station => setBackStation && setBackStation.IsAvailable ? setBackStation : null;
         public CameraStation Camera => cameraStation && cameraStation.IsAvailable ? cameraStation : null;
+        public TvStation Tv => tvStation && tvStation.IsAvailable ? tvStation : null;
         public NavMeshData NavigationData => navigationData;
         public bool UsesSceneBindings => usesSceneBindings;
         // The visual rig can glance toward the current waypoint before the body finishes turning.
@@ -68,6 +70,9 @@ namespace Before1800.PartB
         public bool CanInspect(string targetId)
         {
             if (targetId == SessionState.CameraTarget) return CanReachObservation;
+            if (targetId == SessionState.BroadcastTarget)
+                return initialized && Tv && Tv.CanReachObservation() &&
+                    PathTo(Tv.ObservationPoint.position, new NavMeshPath());
             return initialized && targetId == SessionState.SetBackTarget && Station &&
                 PathTo(Station.ObservationPoint.position, new NavMeshPath());
         }
@@ -75,8 +80,12 @@ namespace Before1800.PartB
         public bool AtObservation(string targetId)
         {
             if (targetId == SessionState.CameraTarget) return IsAtObservation;
+            if (targetId == SessionState.BroadcastTarget) return initialized && Tv && Tv.AtObservation(Lin);
             return initialized && targetId == SessionState.SetBackTarget && Station && Station.AtObservation(Lin);
         }
+
+        public bool CanExamineTv => initialized && Tv &&
+            CanFocus(Tv.Screen, Tv.Screen.position, 3.2f, 28f);
         bool ObservationAvailable => observationPoint && cameraTarget &&
             observationPoint.gameObject.activeInHierarchy && cameraTarget.gameObject.activeInHierarchy;
 
@@ -199,6 +208,9 @@ namespace Before1800.PartB
             if (!cameraStation) cameraStation = GetComponentInChildren<CameraStation>(true);
             if (!cameraStation || !cameraStation.IsAvailable)
                 cameraStation = CameraStation.Ensure(cameraTarget, observationPoint, mark);
+            if (!tvStation) tvStation = GetComponentInChildren<TvStation>(true);
+            if (!tvStation || !tvStation.IsAvailable)
+                tvStation = TvStation.Ensure(transform, mark);
             openObservationPoint = observationPoint.position;
             namePlate = Lin.Find("Name plate");
             nameLabel = Lin.Find("Lin name");
@@ -210,6 +222,7 @@ namespace Before1800.PartB
         {
             SetObservationBlockedForTest(false);
             if (setBackStation) setBackStation.ResetDoor();
+            if (tvStation) tvStation.ResetStation();
             ResetActor(player, playerStart);
             ResetActor(lin, returnPoint);
             if (cameraStation) cameraStation.SnapTo(Lin);
@@ -259,6 +272,11 @@ namespace Before1800.PartB
             {
                 goal = observationPoint;
                 focus = cameraTarget;
+            }
+            else if (targetId == SessionState.BroadcastTarget && Tv)
+            {
+                goal = Tv.ObservationPoint;
+                focus = Tv.Screen;
             }
             else if (targetId == SessionState.SetBackTarget && Station)
             {

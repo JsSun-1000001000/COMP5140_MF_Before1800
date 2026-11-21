@@ -79,6 +79,7 @@ namespace Before1800.PartB
     {
         public const string CameraTarget = "camera_test";
         public const string SetBackTarget = "set_back";
+        public const string BroadcastTarget = "living_tv";
         public const double DeadlineSeconds = 3600;
 
         private readonly HashSet<PauseToken> pauses = new HashSet<PauseToken>();
@@ -95,9 +96,11 @@ namespace Before1800.PartB
         public bool TimedOut { get; private set; }
         public bool IsPaused => TimedOut || pauses.Count != 0;
         public bool E1Verified => verified.Contains("E1");
+        public bool E4Verified => verified.Contains("E4");
         public bool E5Verified => verified.Contains("E5");
         public bool CameraDiscovered { get; private set; }
         public bool DoorDiscovered { get; private set; }
+        public bool TvDiscovered { get; private set; }
         public bool EscapeAgreed { get; private set; }
         public bool RouteConfirmed { get; private set; }
         public CooperationMode Cooperation { get; private set; }
@@ -138,7 +141,7 @@ namespace Before1800.PartB
             Version = 0;
             ElapsedGameSeconds = 0;
             TimedOut = EscapeAgreed = RouteConfirmed = WithdrawUsed = false;
-            CameraDiscovered = DoorDiscovered = false;
+            CameraDiscovered = DoorDiscovered = TvDiscovered = false;
             Cooperation = CooperationMode.Talking;
             Pending = Active = failedReturn = null;
             activeStage = ActionStage.Idle;
@@ -163,6 +166,7 @@ namespace Before1800.PartB
             if (IsPaused) return;
             if (targetId == CameraTarget && !CameraDiscovered) CameraDiscovered = true;
             else if (targetId == SetBackTarget && !DoorDiscovered) DoorDiscovered = true;
+            else if (targetId == BroadcastTarget && !TvDiscovered) TvDiscovered = true;
             else return;
             Commit("Player noticed " + targetId + ".");
         }
@@ -177,9 +181,7 @@ namespace Before1800.PartB
                 run_id = RunId.ToString("N"), state_version = (long)Version,
                 time_hms = TimeHms, game_elapsed_ms = (long)(ElapsedGameSeconds * 1000),
                 verified_evidence = VerifiedEvidence,
-                player_discoveries = CameraDiscovered
-                    ? (DoorDiscovered ? new[] { CameraTarget, SetBackTarget } : new[] { CameraTarget })
-                    : (DoorDiscovered ? new[] { SetBackTarget } : Array.Empty<string>()),
+                player_discoveries = BuildDiscoveries(),
                 concerns = new ConcernSnapshot
                 {
                     C1 = IsConcernResolved("C1") ? "resolved" : "open",
@@ -395,6 +397,11 @@ namespace Before1800.PartB
             return TryCompleteInspection(SetBackTarget, ticket, eventId);
         }
 
+        internal bool TryCompleteBroadcastExperiment(ActionTicket ticket, Guid eventId)
+        {
+            return TryCompleteInspection(BroadcastTarget, ticket, eventId);
+        }
+
         private bool TryCompleteInspection(string target, ActionTicket ticket, Guid eventId)
         {
             if (ticket == null || ticket.RunId != RunId || ticket.Action != "inspect" ||
@@ -406,6 +413,15 @@ namespace Before1800.PartB
             Commit(evidence + " verified. Returning.");
             RecordActionResult(ticket, "verified", LastResult);
             return true;
+        }
+
+        private string[] BuildDiscoveries()
+        {
+            var list = new List<string>(3);
+            if (CameraDiscovered) list.Add(CameraTarget);
+            if (TvDiscovered) list.Add(BroadcastTarget);
+            if (DoorDiscovered) list.Add(SetBackTarget);
+            return list.ToArray();
         }
 
         internal bool TryConfirmRoute(Guid runId, Guid eventId)
@@ -422,6 +438,7 @@ namespace Before1800.PartB
             switch (targetId)
             {
                 case CameraTarget: return "E1";
+                case BroadcastTarget: return "E4";
                 case SetBackTarget: return "E5";
                 default: return null;
             }

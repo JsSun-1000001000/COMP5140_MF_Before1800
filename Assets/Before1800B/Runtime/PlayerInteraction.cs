@@ -17,8 +17,8 @@ namespace Before1800.PartB
     // device interfaces can start navigation, verify a fact or clear a concern.
     public sealed class PlayerInteraction
     {
-        private enum Topic { Opening, Camera, Honesty, Company, Door, Reply }
-        private enum Focus { None, Lin, Camera, TrackCamera, OpenDoor, InspectDoor, Route }
+        private enum Topic { Opening, Camera, Tv, Honesty, Company, Door, Reply }
+        private enum Focus { None, Lin, Camera, TrackCamera, Tv, OpenDoor, InspectDoor, Route }
 
         private readonly PartBScene scene;
         private readonly List<PlayerChoice> choices = new List<PlayerChoice>(3);
@@ -36,6 +36,7 @@ namespace Before1800.PartB
         private ulong journalVersion;
         private bool journalStation;
         private bool sawE1Verified;
+        private bool sawE4Verified;
         private SessionState State => scene.State;
         private GreyboxWorld World => scene.World;
 
@@ -44,6 +45,7 @@ namespace Before1800.PartB
             this.scene = scene;
             runId = State.RunId;
             sawE1Verified = State.E1Verified;
+            sawE4Verified = State.E4Verified;
         }
 
         // Called each UI frame so success banners appear as soon as evidence is written.
@@ -53,11 +55,15 @@ namespace Before1800.PartB
             {
                 runId = State.RunId;
                 sawE1Verified = State.E1Verified;
+                sawE4Verified = State.E4Verified;
                 return;
             }
             if (State.E1Verified && !sawE1Verified)
                 Flash("手记已更新：林亲眼确认镜头会跟随她。按 J 查看。", 5.5f);
+            if (State.E4Verified && !sawE4Verified)
+                Flash("手记已更新：林确认电视会按她想看的节目切换。按 J 查看。", 5.5f);
             sawE1Verified = State.E1Verified;
+            sawE4Verified = State.E4Verified;
         }
 
         public bool DebugOpen { get; set; }
@@ -132,7 +138,13 @@ namespace Before1800.PartB
                 State.Active?.TargetId == SessionState.CameraTarget && World.Camera &&
                 (World.Camera.CanStartTracking(World.ViewCamera.transform, World.Lin) || World.CanExamineCamera))
                 return Focus.TrackCamera;
+            if (!scene.ObservingBroadcast && !State.E4Verified && World.Tv &&
+                State.Stage == ActionStage.Arrived && State.Active?.TargetId == SessionState.BroadcastTarget &&
+                (World.Tv.CanStartSequence || World.Tv.CanConfirmPredictedShow || World.Tv.CanIntervene ||
+                 World.Tv.Phase == TvPhase.Failed || World.CanExamineTv))
+                return Focus.Tv;
             if (World.CanExamineCamera) return Focus.Camera;
+            if (World.CanExamineTv) return Focus.Tv;
             var station = World.Station;
             if (station)
             {
@@ -156,6 +168,15 @@ namespace Before1800.PartB
                     case Focus.Lin: return State.Cooperation == CooperationMode.Withdrawn ? "重新和林说话" : "和林说话";
                     case Focus.Camera: return State.CameraDiscovered ? "查看镜头记录" : "查看镜头";
                     case Focus.TrackCamera: return "请林换到第二个观察点，看镜头是否跟随";
+                    case Focus.Tv:
+                        if (State.Stage == ActionStage.Arrived && State.Active?.TargetId == SessionState.BroadcastTarget)
+                        {
+                            if (World.Tv && World.Tv.CanStartSequence) return "启动电视预测序列";
+                            if (World.Tv && World.Tv.CanConfirmPredictedShow) return "请林点播预测的节目";
+                            if (World.Tv && World.Tv.CanIntervene) return "请林改口，看画面是否跟着变";
+                            if (World.Tv && World.Tv.Phase == TvPhase.Failed) return "预测失败，回对话重新登记";
+                        }
+                        return State.TvDiscovered ? "查看电视记录" : "查看客厅电视";
                     case Focus.OpenDoor: return "打开维修门";
                     case Focus.InspectDoor: return "请林观察门后的布景";
                     case Focus.Route: return "检查通道";
@@ -177,14 +198,31 @@ namespace Before1800.PartB
                     return string.IsNullOrEmpty(scene.CameraTrackHint)
                         ? "跟踪实验进行中：看镜头外壳是否跟着林转。"
                         : scene.CameraTrackHint;
+                if (scene.ObservingBroadcast || (State.Stage == ActionStage.Arrived &&
+                    State.Active?.TargetId == SessionState.BroadcastTarget))
+                {
+                    if (!string.IsNullOrEmpty(scene.BroadcastHint)) return scene.BroadcastHint;
+                    if (World.Tv && World.Tv.CanStartSequence) return "林在电视前。对准屏幕按 E，启动已锁定的预测序列。";
+                    if (World.Tv && World.Tv.CanConfirmPredictedShow)
+                        return "序列已启动。按 E，请林点播你预测的节目。";
+                    if (World.Tv && World.Tv.CanIntervene)
+                        return "预测已命中。按 E，请林改口点另一个节目，看画面是否跟着变。";
+                    if (World.Tv && World.Tv.Phase == TvPhase.Failed)
+                        return "本次预测失败，不计 E4。打开对话重新登记后可重试。";
+                    return "林到了电视前。先登记预测，再启动序列。";
+                }
                 if (State.Stage == ActionStage.Arrived)
                     return State.Active?.TargetId == SessionState.SetBackTarget
                         ? "林到了维修门边。靠近门旁的控制器，请她一起观察。"
                         : "林到了第一个观察点。对准镜头按 E，开始跟踪验证（会显示锁定进度）。";
                 if (State.Stage == ActionStage.Returning)
-                    return State.Active?.TargetId == SessionState.SetBackTarget
-                        ? "林看清了布景支架，正在往回走。"
-                        : "E1 已确认。林亲眼看见镜头跟随，正在往回走。按 J 可回看手记。";
+                {
+                    if (State.Active?.TargetId == SessionState.SetBackTarget)
+                        return "林看清了布景支架，正在往回走。";
+                    if (State.Active?.TargetId == SessionState.BroadcastTarget)
+                        return "E4 已确认。电视跟着林想看的节目切换了。按 J 可回看手记。";
+                    return "E1 已确认。林亲眼看见镜头跟随，正在往回走。按 J 可回看手记。";
+                }
                 return "";
             }
         }
@@ -206,6 +244,11 @@ namespace Before1800.PartB
                 {
                     case Topic.Camera: return State.E1Verified ? "我换到第二个点时，它真的跟着转了……谁在看？" :
                         "电视上面那个小黑点？我想站到两个观察点上，看它会不会跟着我转。";
+                    case Topic.Tv: return State.E4Verified
+                        ? "我改口以后，画面真的跟着变了……它怎么知道我想看什么？"
+                        : World.Tv && World.Tv.HasPrediction
+                            ? "好，先记下你的预测。等我站到电视前，你再启动。"
+                            : "你是说，客厅这台电视会按我想看的节目切换？那你先说清楚会出什么。";
                     case Topic.Door: return State.E5Verified ? "那些支架和编号，我都看清了。这面墙是搭起来的。" :
                         "你说的是那扇维修门？我想亲眼看一下后面有什么。";
                     case Topic.Honesty: return "那就从你知道的第一件事说起吧。我想听你亲口告诉我。";
@@ -215,8 +258,10 @@ namespace Before1800.PartB
                 }
                 if (State.Stage == ActionStage.Arrived && State.Active?.TargetId == SessionState.CameraTarget)
                     return "我在这里了。我们一起看看，镜头到底会不会转。";
+                if (State.Stage == ActionStage.Arrived && State.Active?.TargetId == SessionState.BroadcastTarget)
+                    return "我在电视前面了。按你说的，先启动，再看它会不会听话。";
                 if (State.Active != null && State.Active.Action == "inspect") return "怎么了？要我先停一下吗？";
-                if (State.E1Verified || State.E5Verified) return "刚才看到的事，我还想再理一理。你呢？";
+                if (State.E1Verified || State.E4Verified || State.E5Verified) return "刚才看到的事，我还想再理一理。你呢？";
                 if (State.Cooperation == CooperationMode.Following) return "我就在你旁边。你想去哪儿？";
                 return World.UsesSceneBindings ? "你从刚才起就一直看着电视那边。怎么了？" :
                     "你一直在打量这个房间。有什么想让我一起看看？";
@@ -229,11 +274,13 @@ namespace Before1800.PartB
             {
                 bool station = World.Station;
                 if (journalCache != null && journalVersion == State.Version && journalStation == station) return journalCache;
-                var found = new List<string>(2);
+                var found = new List<string>(3);
                 if (State.CameraDiscovered) found.Add(World.UsesSceneBindings ? "电视上方装着一个朝向客厅的镜头。" : "墙上的镜头朝向房间。");
+                if (State.TvDiscovered) found.Add("客厅电视能按林想看的节目切换画面。");
                 if (State.DoorDiscovered) found.Add("维修门后有一段窄通道。");
-                var seen = new List<string>(2);
+                var seen = new List<string>(3);
                 if (State.E1Verified) seen.Add("林换到第二个观察点时，镜头外壳跟着转向她。");
+                if (State.E4Verified) seen.Add("林先点播预测节目命中，再改口后电视画面跟着更新。");
                 if (State.E5Verified) seen.Add("林看清了墙后的支架和制作标记。");
                 journalCache = "我留意到的\n" + (found.Count > 0 ? string.Join("\n", found) : "还没有记下发现。") +
                     "\n\n林亲眼确认的\n" + (seen.Count > 0 ? string.Join("\n", seen) : "还没有亲眼确认的线索。") +
@@ -298,30 +345,71 @@ namespace Before1800.PartB
                 case Topic.Opening:
                     Add("camera", State.E1Verified ? "聊聊刚才转动的镜头。" :
                         World.UsesSceneBindings ? "你看，电视上面有个镜头。" : "你看，墙上有个镜头。");
+                    if (World.Tv)
+                        Add("tv", State.E4Verified ? "聊聊刚才听话的电视。" : "关于客厅这台电视，我想先做个预测。");
                     Add("honesty", "有件事，我一直没敢告诉你。");
                     Add("company", "和我一起走走？");
                     break;
                 case Topic.Camera:
                     if (!State.E1Verified) Add("go_camera", "一起去看看");
+                    if (World.Tv) Add("tv", "还有客厅电视。");
                     if (World.Station) Add("door", "我还看见了一扇维修门。");
                     Add("again", "我还想说件事。");
                     break;
+                case Topic.Tv:
+                    BuildTvChoices();
+                    break;
                 case Topic.Door:
                     if (!State.E5Verified && World.Station) Add("go_door", "一起去维修门看看");
+                    if (World.Tv) Add("tv", "先做电视预测。");
                     Add("again", "再聊一句");
                     break;
                 case Topic.Company:
                     if (State.Cooperation == CooperationMode.Following) Add("stop", "在这里等我。");
                     else Add("follow", "跟我来。");
+                    if (World.Tv) Add("tv", "先去电视那边。");
                     if (World.Station) Add("door", "跟我去看看维修门。");
                     Add("again", "先聊点别的。");
                     break;
                 default:
                     Add("camera", "先一起看看那个镜头吧。");
+                    if (World.Tv) Add("tv", "先给电视做个预测。");
                     if (World.Station) Add("door", "你见过那扇维修门吗？");
                     Add("again", "回到刚才的话题。");
                     break;
             }
+        }
+
+        private void BuildTvChoices()
+        {
+            if (State.E4Verified)
+            {
+                Add("again", "回到刚才的话题。");
+                return;
+            }
+            var tv = World.Tv;
+            if (tv && tv.Phase == TvPhase.Running)
+            {
+                Add("tv_req_news", "请林点播新闻（例3可故意点错）");
+                Add("tv_req_cartoon", "请林点播动画片");
+                Add("tv_req_weather", "请林点播天气预报");
+                Add("resume_action", "好，你继续对着电视。");
+                return;
+            }
+            if (tv && tv.Phase == TvPhase.Step1Matched)
+            {
+                Add("tv_intervene", "请林改口，看画面是否跟着变（步骤2）");
+                Add("resume_action", "好，你继续对着电视。");
+                return;
+            }
+            if (tv && (tv.Phase == TvPhase.Idle || tv.Phase == TvPhase.Failed || tv.Phase == TvPhase.Predicted))
+            {
+                Add("pred_news", "例1：启动后会播新闻");
+                Add("pred_cartoon", "例2：启动后会播动画片");
+                Add("pred_weather", "例3：启动后会播天气预报");
+            }
+            if (tv && tv.HasPrediction && !State.E4Verified) Add("go_tv", "一起去客厅电视前验证");
+            Add("again", "我还想说件事。");
         }
 
         public void Begin()
@@ -358,6 +446,19 @@ namespace Before1800.PartB
                         Flash(string.IsNullOrEmpty(block) ? "现在还不能开始跟踪验证。" : block, 4f);
                     }
                     else Flash("跟踪开始：林会走到第二个点，锁定进度到 100% 才会写入手记。", 4.5f);
+                    break;
+                case Focus.Tv:
+                    if (State.Stage == ActionStage.Arrived && State.Active?.TargetId == SessionState.BroadcastTarget)
+                    {
+                        scene.InteractWithBroadcast();
+                        if (!string.IsNullOrEmpty(scene.Feedback)) Flash(scene.Feedback, 4.5f);
+                    }
+                    else if (State.TvDiscovered) ToggleJournal();
+                    else
+                    {
+                        State.Discover(SessionState.BroadcastTarget);
+                        Flash("记入手记：客厅有一台会切换节目的电视。");
+                    }
                     break;
                 case Focus.OpenDoor:
                     scene.InteractWithSetBack();
@@ -426,14 +527,50 @@ namespace Before1800.PartB
                 case "resume_action": CloseTalk(); return;
                 case "again": topic = Topic.Opening; return;
                 case "camera": topic = Topic.Camera; return;
+                case "tv": topic = Topic.Tv; return;
                 case "door": topic = Topic.Door; return;
                 case "honesty": topic = Topic.Honesty; return;
                 case "company": topic = Topic.Company; return;
+                case "pred_news": RegisterPrediction(TvProgram.News); return;
+                case "pred_cartoon": RegisterPrediction(TvProgram.Cartoon); return;
+                case "pred_weather": RegisterPrediction(TvProgram.Weather); return;
+                case "tv_req_news": RequestShow(TvProgram.News); return;
+                case "tv_req_cartoon": RequestShow(TvProgram.Cartoon); return;
+                case "tv_req_weather": RequestShow(TvProgram.Weather); return;
+                case "tv_intervene":
+                    CloseTalk();
+                    scene.InteractWithBroadcast();
+                    if (!string.IsNullOrEmpty(scene.Feedback)) Flash(scene.Feedback, 4.5f);
+                    return;
                 case "go_camera": StartAction("inspect", SessionState.CameraTarget); return;
+                case "go_tv": StartAction("inspect", SessionState.BroadcastTarget); return;
                 case "go_door": StartAction("inspect", SessionState.SetBackTarget); return;
                 case "follow": StartAction("follow", "player"); return;
                 case "stop": StartAction("stop", null); return;
             }
+        }
+
+        private void RegisterPrediction(TvProgram program)
+        {
+            if (!scene.TryRegisterTvPrediction(program, out var reason))
+            {
+                prompt = string.IsNullOrEmpty(reason) ? "现在不能登记预测。" : reason;
+                return;
+            }
+            prompt = reason;
+            choicesDirty = true;
+        }
+
+        private void RequestShow(TvProgram program)
+        {
+            if (!scene.TryLinRequestTvShow(program, out var reason))
+            {
+                prompt = string.IsNullOrEmpty(reason) ? "点播没有生效。" : reason;
+                choicesDirty = true;
+                return;
+            }
+            prompt = reason;
+            choicesDirty = true;
         }
 
         private void StartAction(string action, string target)
@@ -445,7 +582,8 @@ namespace Before1800.PartB
             }
             CloseTalk();
             Flash(action == "follow" ? "林会跟着你。" : action == "stop" ? "林会在这里等你。" :
-                target == SessionState.SetBackTarget ? "林朝维修门走去。" : "林朝镜头走去。");
+                target == SessionState.SetBackTarget ? "林朝维修门走去。" :
+                target == SessionState.BroadcastTarget ? "林朝客厅电视走去。" : "林朝镜头走去。");
         }
 
         private void CloseTalk()
@@ -488,12 +626,13 @@ namespace Before1800.PartB
                 return;
             }
             if (Draft.Contains("镜头") || Draft.Contains("摄像")) topic = Topic.Camera;
+            else if (World.Tv && (Draft.Contains("电视") || Draft.Contains("广播") || Draft.Contains("预测"))) topic = Topic.Tv;
             else if (World.Station && (Draft.Contains("维修门") || Draft.Contains("布景"))) topic = Topic.Door;
             else if (Draft.Contains("骗") || Draft.Contains("瞒") || Draft.Contains("告诉你")) topic = Topic.Honesty;
             else if (Draft.Contains("跟我") || Draft.Contains("一起走") || Draft.Contains("等我")) topic = Topic.Company;
             else
             {
-                prompt = "当前使用预设对话。可以提到镜头、隐瞒或同行，原话已保留。";
+                prompt = "当前使用预设对话。可以提到镜头、电视、隐瞒或同行，原话已保留。";
                 return;
             }
             Draft = prompt = "";
