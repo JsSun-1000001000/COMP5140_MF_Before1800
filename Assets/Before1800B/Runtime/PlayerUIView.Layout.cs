@@ -72,7 +72,7 @@ namespace Before1800.PartB
             introPlace = Label(introPlate, "Location", "", 16, Apricot);
             introTitle = Label(introPlate, "Title", "18 点之前", 52, Cream);
             introSynopsis = Label(introPlate, "Story", "林以为这里是自己的家。\n你知道这间屋子是片场，也曾帮剧组隐瞒真相。", 19, Cream);
-            introGoal = Label(introPlate, "Objective", "导演将在 18:00 回来。先走近林，听听她怎么说。", 16, Soft);
+            introGoal = Label(introPlate, "Objective", "", 16, Soft);
             start = MakeButton(introPlate, "StartExploring", "开始探索   Enter", () => flow.Begin(), true);
             introControls = Label(introPlate, "Controls", "WASD 移动   鼠标环顾", 15, Soft, TextAnchor.MiddleRight);
 

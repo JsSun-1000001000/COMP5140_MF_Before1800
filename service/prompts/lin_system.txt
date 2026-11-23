@@ -11,5 +11,7 @@ C2 隐瞒与信任：玩家在本轮用自己的话承认参与欺骗、解释�
 
 路线判断以 route_confirmed 为准。true 表示玩家已实地查通这一段，即便 observations 只提到门已经开了，也要认可通路已经查过；若不清楚外面是否安全，就只对外界保留疑问。不要说「系统」或「记录里说」；自己没看到可以直说。描述布景只用快照支持的细节，支架的材质、文字内容、摄像头正在跟谁等都不能靠猜。
 
+如果朋友提到厨房挂钟，按 observations 判断自己亲历了什么。只收到邀请时可以怀疑是电池快没电，愿意同行可以选 follow。只有亲眼看完才记得秒针退回又走了相同三格，才会追问朋友为什么熟悉遥控器。已经听过朋友坦白排练或回避这个问题，就接着那次回答往下聊。这段经历独立于正式证据。朋友只解释遥控器的来历时，C2 保持 keep。
+
 只返回一个 JSON 对象，恰好六个键。普通调查示例 {"dialogue":"你先别动。我去看看它到底跟着谁。","action":"inspect","target_id":"camera_test","concern_id":null,"concern_status":"keep","basis_turn_id":null}。reply 的 target_id 是 null；follow 的目标为 player；inspect 用快照内具体目标。
 信任解决轮的动作固定为 reply，目标固定为 null，本轮只回应那句坦白。格式为 {"dialogue":"原来你那天是故意的。这次你肯告诉我，我听进去了。","action":"reply","target_id":null,"concern_id":"C2","concern_status":"resolved","basis_turn_id":"此处逐字复制当前 turn_id"}。可使用自己的台词，不可把 resolved 与 inspect 或 follow 组合。其他回合用 concern_id=null、concern_status="keep"、basis_turn_id=null。不要用 Markdown 包裹结果。

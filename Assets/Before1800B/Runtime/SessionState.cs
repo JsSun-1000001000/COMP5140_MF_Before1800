@@ -6,6 +6,7 @@ namespace Before1800.PartB
     public enum PauseReason { Intro, Dialogue, ModelWait, Menu, Error, Terminal, Journal }
     public enum CooperationMode { Talking, Following, Withdrawn }
     public enum ActionStage { Idle, Queued, Moving, Arrived, Following, Withdrawing, Returning, Completed, Failed }
+    public enum ClockAccount { Unanswered, Disclosed, Evaded }
 
     public sealed class PauseToken
     {
@@ -51,6 +52,13 @@ namespace Before1800.PartB
     }
 
     [Serializable]
+    public sealed class ClockRehearsalSnapshot
+    {
+        public bool invited_to_watch, witnessed_three_ticks;
+        public string answer_about_remote;
+    }
+
+    [Serializable]
     public sealed class ActionResultSnapshot
     {
         public string run_id, action_id, experiment_run_id, recovery_of_action_id, action, target_id, status, reason;
@@ -68,6 +76,7 @@ namespace Before1800.PartB
         public string[] verified_evidence;
         public string[] player_discoveries;
         public ConcernSnapshot concerns;
+        public ClockRehearsalSnapshot clock_rehearsal;
         public bool route_confirmed, escape_agreed;
         public string pending_action, active_action, target_id;
         public ActionResultSnapshot last_action_result;
@@ -101,6 +110,13 @@ namespace Before1800.PartB
         public bool CameraDiscovered { get; private set; }
         public bool DoorDiscovered { get; private set; }
         public bool TvDiscovered { get; private set; }
+        public bool ClockRemoteTaken { get; private set; }
+        public bool ClockBaselineSeen { get; private set; }
+        public bool ClockSoloReplaySeen { get; private set; }
+        public bool ClockInvited { get; private set; }
+        public bool ClockWitnessed { get; private set; }
+        public bool ClockCardRead { get; private set; }
+        public ClockAccount ClockAnswer { get; private set; }
         public bool EscapeAgreed { get; private set; }
         public bool RouteConfirmed { get; private set; }
         public CooperationMode Cooperation { get; private set; }
@@ -142,6 +158,9 @@ namespace Before1800.PartB
             ElapsedGameSeconds = 0;
             TimedOut = EscapeAgreed = RouteConfirmed = WithdrawUsed = false;
             CameraDiscovered = DoorDiscovered = TvDiscovered = false;
+            ClockRemoteTaken = ClockBaselineSeen = ClockSoloReplaySeen = false;
+            ClockInvited = ClockWitnessed = ClockCardRead = false;
+            ClockAnswer = ClockAccount.Unanswered;
             Cooperation = CooperationMode.Talking;
             Pending = Active = failedReturn = null;
             activeStage = ActionStage.Idle;
@@ -171,6 +190,57 @@ namespace Before1800.PartB
             Commit("Player noticed " + targetId + ".");
         }
 
+        internal void TakeClockRemote()
+        {
+            if (IsPaused || ClockRemoteTaken) return;
+            ClockRemoteTaken = true;
+            Commit("Player picked up the remote.");
+        }
+
+        internal void FinishClockBaseline()
+        {
+            if (IsPaused || ClockBaselineSeen) return;
+            ClockBaselineSeen = true;
+            Commit("Player saw the kitchen clock hesitate.");
+        }
+
+        internal void FinishClockReplay(bool playerWatched, bool linWatched)
+        {
+            if (IsPaused || !ClockRemoteTaken || !ClockBaselineSeen) return;
+            if (!ClockSoloReplaySeen && playerWatched)
+            {
+                ClockSoloReplaySeen = true;
+                Commit("Player reproduced the three ticks.");
+            }
+            else if (ClockSoloReplaySeen && linWatched && !ClockWitnessed)
+            {
+                ClockWitnessed = true;
+                Commit("Lin watched the three ticks repeat.");
+            }
+        }
+
+        internal void InviteLinToClock()
+        {
+            if (TimedOut || !HasPause(PauseReason.Dialogue) || !ClockSoloReplaySeen || ClockInvited) return;
+            ClockInvited = true;
+            Commit("Lin agreed to look at the kitchen clock.");
+        }
+
+        internal void AnswerClockQuestion(ClockAccount answer)
+        {
+            if (TimedOut || !HasPause(PauseReason.Dialogue) || !ClockWitnessed ||
+                ClockAnswer != ClockAccount.Unanswered || answer == ClockAccount.Unanswered) return;
+            ClockAnswer = answer;
+            Commit("Lin remembers the player's answer about the remote.");
+        }
+
+        internal void ReadClockCard()
+        {
+            if (IsPaused || !ClockWitnessed || ClockCardRead) return;
+            ClockCardRead = true;
+            Commit("Player read the retake card on the living room TV.");
+        }
+
         public SessionSnapshot ReadSnapshot()
         {
             var history = new ActionResultSnapshot[recentResults.Count];
@@ -182,6 +252,12 @@ namespace Before1800.PartB
                 time_hms = TimeHms, game_elapsed_ms = (long)(ElapsedGameSeconds * 1000),
                 verified_evidence = VerifiedEvidence,
                 player_discoveries = BuildDiscoveries(),
+                clock_rehearsal = ClockInvited || ClockWitnessed ? new ClockRehearsalSnapshot
+                {
+                    invited_to_watch = ClockInvited, witnessed_three_ticks = ClockWitnessed,
+                    answer_about_remote = ClockAnswer == ClockAccount.Disclosed ? "admitted_rehearsal" :
+                        ClockAnswer == ClockAccount.Evaded ? "evaded" : "unanswered"
+                } : null,
                 concerns = new ConcernSnapshot
                 {
                     C1 = IsConcernResolved("C1") ? "resolved" : "open",

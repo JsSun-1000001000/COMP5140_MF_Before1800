@@ -12,7 +12,7 @@ namespace Before1800.PartB
     // F2 opts into the loopback gateway. Existing local topics still work with the gateway off.
     public sealed class PartCDialogue : MonoBehaviour
     {
-        private const string Gateway = "http://127.0.0.1:8180/npc/";
+        private string gateway = "http://127.0.0.1:8180/npc/";
         [Serializable] private sealed class Entry { public string role, content; }
         [Serializable] private sealed class Context
         {
@@ -48,7 +48,21 @@ namespace Before1800.PartB
         public string LastPayload => sent;
         public string LastResponse => received;
 
-        private void Awake() { scene = GetComponent<PartBScene>(); }
+        private void Awake()
+        {
+            scene = GetComponent<PartBScene>();
+            const string flag = "--lin-gateway=";
+            var address = Environment.GetEnvironmentVariable("BEFORE1800_LIN_GATEWAY");
+            foreach (var arg in Environment.GetCommandLineArgs())
+                if (arg.StartsWith(flag, StringComparison.Ordinal)) address = arg.Substring(flag.Length);
+            if (Uri.TryCreate(address, UriKind.Absolute, out var uri) && uri.IsLoopback &&
+                uri.Scheme == Uri.UriSchemeHttp && uri.UserInfo.Length == 0 && uri.AbsolutePath == "/" &&
+                uri.Query.Length == 0 && uri.Fragment.Length == 0)
+            {
+                gateway = uri.GetLeftPart(UriPartial.Authority) + "/npc/";
+                SetLive(true);
+            }
+        }
 
         public void SetLive(bool value)
         {
@@ -73,6 +87,12 @@ namespace Before1800.PartB
 
         private void Request(ModelRequest ticket, string line)
         {
+            StartCoroutine(PrepareTurn(ticket, line));
+        }
+
+        // Freeze the request body before the transport coroutine can yield.
+        internal IEnumerator PrepareTurn(ModelRequest ticket, string line)
+        {
             if (currentRun != ticket.RunId)
             {
                 history.Clear();
@@ -93,6 +113,17 @@ namespace Before1800.PartB
             }
 
             var observations = new List<string> { "当前动作阶段：" + s.action_stage };
+            var clock = s.clock_rehearsal;
+            if (clock != null && clock.invited_to_watch)
+                observations.Add("朋友邀请你去厨房看钟。");
+            if (clock != null && clock.witnessed_three_ticks)
+            {
+                observations.Add("你亲眼看见厨房挂钟的秒针走过三格，又退回并重复相同的三格。朋友当时手里有遥控器。");
+                if (clock.answer_about_remote == "admitted_rehearsal")
+                    observations.Add("你问过朋友怎么知道按键，对方承认自己曾排练过。");
+                else if (clock.answer_about_remote == "evaded")
+                    observations.Add("你问过朋友怎么知道按键，对方岔开了话题，没有回答。");
+            }
             if (scene.World.Tv)
             {
                 var tv = scene.World.Tv;
@@ -122,14 +153,14 @@ namespace Before1800.PartB
             }
             received = "";
             status = "正在等待 DeepSeek";
-            StartCoroutine(Decide(ticket, input, sent));
+            return Decide(ticket, input, sent);
         }
 
-        private static UnityWebRequest Post(string endpoint, string json)
+        private UnityWebRequest Post(string endpoint, string json)
         {
-            var http = new UnityWebRequest(Gateway + endpoint, "POST") {
+            var http = new UnityWebRequest(gateway + endpoint, "POST") {
                 uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json)),
-                downloadHandler = new DownloadHandlerBuffer(), timeout = 26
+                downloadHandler = new DownloadHandlerBuffer(), timeout = 26, redirectLimit = 0
             };
             http.SetRequestHeader("Content-Type", "application/json");
             return http;

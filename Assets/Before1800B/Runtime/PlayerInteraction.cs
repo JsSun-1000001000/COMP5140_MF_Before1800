@@ -17,11 +17,11 @@ namespace Before1800.PartB
     // device interfaces can start navigation, verify a fact or clear a concern.
     public sealed class PlayerInteraction
     {
-        private enum Topic { Opening, Camera, Tv, Honesty, Company, Door, Reply }
-        private enum Focus { None, Lin, Camera, TrackCamera, Tv, OpenDoor, InspectDoor, Route }
+        private enum Topic { Opening, Camera, Tv, Honesty, Company, Door, Reply, Clock, ClockAnswerReceipt, ClockLater }
+        private enum Focus { None, Lin, Camera, TrackCamera, Tv, OpenDoor, InspectDoor, Route, ApartmentDoor, Remote, KitchenClock, RetakeCard }
 
         private readonly PartBScene scene;
-        private readonly List<PlayerChoice> choices = new List<PlayerChoice>(3);
+        private readonly List<PlayerChoice> choices = new List<PlayerChoice>(5);
         private Topic topic, lastChoicesTopic;
         private PlayerScreen lastChoicesScreen;
         private ulong lastChoicesVersion;
@@ -130,19 +130,28 @@ namespace Before1800.PartB
             pendingReply = null;
         }
 
-        private Focus CurrentFocus()
+        private Focus CurrentFocus(out ApartmentDoor door)
         {
+            door = null;
             if (Screen != PlayerScreen.Explore || DebugOpen) return Focus.None;
             // Prefer the E1 experiment over journal/discover while Lin is waiting at the camera.
             if (!scene.ObservingCamera && !State.E1Verified && State.Stage == ActionStage.Arrived &&
                 State.Active?.TargetId == SessionState.CameraTarget && World.Camera &&
                 (World.Camera.CanStartTracking(World.ViewCamera.transform, World.Lin) || World.CanExamineCamera))
                 return Focus.TrackCamera;
-            if (!scene.ObservingBroadcast && !State.E4Verified && World.Tv &&
+            if (!State.E4Verified && World.Tv &&
                 State.Stage == ActionStage.Arrived && State.Active?.TargetId == SessionState.BroadcastTarget &&
-                (World.Tv.CanStartSequence || World.Tv.CanConfirmPredictedShow || World.Tv.CanIntervene ||
-                 World.Tv.Phase == TvPhase.Failed || World.CanExamineTv))
+                (World.CanExamineTv || World.Tv.PlayerCanOperate(World.ViewCamera.transform)))
                 return Focus.Tv;
+            var clock = scene.Clock;
+            if (clock != null)
+            {
+                if (clock.AtRemote) return Focus.Remote;
+                if (clock.AtCard) return Focus.RetakeCard;
+                if (clock.AtClock) return Focus.KitchenClock;
+            }
+            door = World.DoorInView();
+            if (door) return Focus.ApartmentDoor;
             if (World.CanExamineCamera) return Focus.Camera;
             if (World.CanExamineTv) return Focus.Tv;
             var station = World.Station;
@@ -163,8 +172,12 @@ namespace Before1800.PartB
         {
             get
             {
-                switch (CurrentFocus())
+                switch (CurrentFocus(out var door))
                 {
+                    case Focus.Remote: return "拿起茶几上的遥控器";
+                    case Focus.KitchenClock: return scene.Clock.ClockHint;
+                    case Focus.RetakeCard: return "读电视上的重拍提示";
+                    case Focus.ApartmentDoor: return door.WantsOpen ? "关门" : "开门";
                     case Focus.Lin: return State.Cooperation == CooperationMode.Withdrawn ? "重新和林说话" : "和林说话";
                     case Focus.Camera: return State.CameraDiscovered ? "查看镜头记录" : "查看镜头";
                     case Focus.TrackCamera: return "请林换到第二个观察点，看镜头是否跟随";
@@ -192,6 +205,12 @@ namespace Before1800.PartB
                 if (Screen == PlayerScreen.Talk) return prompt;
                 if (Screen != PlayerScreen.Explore) return "";
                 if (Time.unscaledTime < transientUntil && transient.Length > 0) return transient;
+                var clockNotice = scene.Clock?.Notice;
+                if (!string.IsNullOrEmpty(clockNotice)) return clockNotice;
+                var door = World.DoorInView();
+                if (door && door.IsBlocked) return "门边有人挡住了，留一点空间。";
+                if (State.Stage == ActionStage.Following && World.FollowingNeedsOpenDoor)
+                    return "林在门的另一边，打开房门她就能跟过来。";
                 if (scene.CheckingRoute) return "正在检查通道，保持面向检查牌。";
                 if (scene.ObservingSetBack) return "林在辨认支架和标记，给她留出视线。";
                 if (scene.ObservingCamera)
@@ -249,6 +268,18 @@ namespace Before1800.PartB
                         : World.Tv && World.Tv.HasPrediction
                             ? "好，先记下你的预测。等我站到电视前，你再启动。"
                             : "你是说，客厅这台电视会按我想看的节目切换？那你先说清楚会出什么。";
+                    case Topic.Clock:
+                        if (State.ClockWitnessed)
+                            return State.ClockAnswer == ClockAccount.Unanswered
+                                ? "它走了三格，退回去，又走了同样的三格。你怎么知道该按哪颗键？"
+                                : ClockLaterLine();
+                        return State.ClockInvited ? "我想自己听一遍。到钟前面给我留点地方，好吗？" :
+                            "会不会只是电池快没电了？带我去厨房，我想听听那一拍。";
+                    case Topic.ClockAnswerReceipt:
+                        return State.ClockAnswer == ClockAccount.Disclosed
+                            ? "你也参加过排练……谢谢你亲口说。那一秒，我想自己再看一次。"
+                            : "猜的？我还没听见第三声，你的拇指就已经按上去了。";
+                    case Topic.ClockLater: return ClockLaterLine();
                     case Topic.Door: return State.E5Verified ? "那些支架和编号，我都看清了。这面墙是搭起来的。" :
                         "你说的是那扇维修门？我想亲眼看一下后面有什么。";
                     case Topic.Honesty: return "那就从你知道的第一件事说起吧。我想听你亲口告诉我。";
@@ -268,19 +299,30 @@ namespace Before1800.PartB
             }
         }
 
+        private string ClockLaterLine() => State.ClockAnswer == ClockAccount.Disclosed
+            ? "这次我来按。你告诉我，排练时还有哪些事是我不知道的？"
+            : "我还记得那颗键。等你愿意说是怎么知道的，我们再聊。";
+
         public string JournalText
         {
             get
             {
                 bool station = World.Station;
                 if (journalCache != null && journalVersion == State.Version && journalStation == station) return journalCache;
-                var found = new List<string>(3);
+                var found = new List<string>(7);
+                if (State.ClockRemoteTaken) found.Add("茶几遥控器的背面写着「厨房 · 重播」。遥控器在我手里。");
+                if (State.ClockBaselineSeen) found.Add("厨房挂钟的第三拍比前两拍晚了半拍。");
+                if (State.ClockSoloReplaySeen) found.Add("《少走的一秒》：按下重播，秒针走三格，退回去，又走了同样的三格。");
+                if (State.ClockCardRead) found.Add("客厅电视的重拍提示卡上写着「重来」「从上一句接」。");
                 if (State.CameraDiscovered) found.Add(World.UsesSceneBindings ? "电视上方装着一个朝向客厅的镜头。" : "墙上的镜头朝向房间。");
                 if (State.TvDiscovered) found.Add("客厅电视能按林想看的节目切换画面。");
                 if (State.DoorDiscovered) found.Add("维修门后有一段窄通道。");
-                var seen = new List<string>(3);
+                var seen = new List<string>(5);
                 if (State.E1Verified) seen.Add("林换到第二个观察点时，镜头外壳跟着转向她。");
                 if (State.E4Verified) seen.Add("林先点播预测节目命中，再改口后电视画面跟着更新。");
+                if (State.ClockWitnessed) seen.Add("林亲眼看完三拍重播，问我怎么知道该按哪颗键。");
+                if (State.ClockAnswer == ClockAccount.Disclosed) seen.Add("我告诉林，我在排练时按过。她想自己试一次。");
+                if (State.ClockAnswer == ClockAccount.Evaded) seen.Add("我说是猜的。林记得我提前把拇指放到了那颗键上。");
                 if (State.E5Verified) seen.Add("林看清了墙后的支架和制作标记。");
                 journalCache = "我留意到的\n" + (found.Count > 0 ? string.Join("\n", found) : "还没有记下发现。") +
                     "\n\n林亲眼确认的\n" + (seen.Count > 0 ? string.Join("\n", seen) : "还没有亲眼确认的线索。") +
@@ -348,6 +390,7 @@ namespace Before1800.PartB
                     if (World.Tv)
                         Add("tv", State.E4Verified ? "聊聊刚才听话的电视。" : "关于客厅这台电视，我想先做个预测。");
                     Add("honesty", "有件事，我一直没敢告诉你。");
+                    if (State.ClockSoloReplaySeen) Add("clock", State.ClockWitnessed ? "说说刚才的三拍。" : "我想让你听一听厨房挂钟。");
                     Add("company", "和我一起走走？");
                     break;
                 case Topic.Camera:
@@ -369,6 +412,23 @@ namespace Before1800.PartB
                     else Add("follow", "跟我来。");
                     if (World.Tv) Add("tv", "先去电视那边。");
                     if (World.Station) Add("door", "跟我去看看维修门。");
+                    Add("again", "先聊点别的。");
+                    break;
+                case Topic.Clock:
+                    if (!State.ClockWitnessed) Add("clock_invite", State.ClockInvited ? "走，我们再看一遍。" : "跟我去厨房，第三拍时看秒针。");
+                    else if (State.ClockAnswer == ClockAccount.Unanswered)
+                    {
+                        Add("clock_truth", "我排练时按过。我一直知道这颗键是干什么的。");
+                        Add("clock_evade", "我猜的，刚好按对了。");
+                    }
+                    Add("again", "先聊点别的。");
+                    break;
+                case Topic.ClockAnswerReceipt:
+                    Add("clock_after", State.ClockAnswer == ClockAccount.Disclosed ? "你还想再试一次吗？" : "你还有什么想问我的？");
+                    Add("again", "先聊点别的。");
+                    break;
+                case Topic.ClockLater:
+                    Add("honesty", "有件事，我想亲口告诉你。");
                     Add("again", "先聊点别的。");
                     break;
                 default:
@@ -421,12 +481,18 @@ namespace Before1800.PartB
 
         public void Use()
         {
-            switch (CurrentFocus())
+            switch (CurrentFocus(out var door))
             {
+                case Focus.Remote: scene.Clock.TakeRemote(); break;
+                case Focus.KitchenClock: scene.Clock.UseClock(); break;
+                case Focus.RetakeCard: scene.Clock.ReadCard(); break;
+                case Focus.ApartmentDoor:
+                    door.Toggle();
+                    break;
                 case Focus.Lin:
                     scene.ToggleDialogue();
                     framing = scene.DialogueOpen;
-                    topic = Topic.Opening;
+                    topic = State.ClockWitnessed && State.ClockAnswer == ClockAccount.Unanswered ? Topic.Clock : Topic.Opening;
                     prompt = "";
                     break;
                 case Focus.Camera:
@@ -542,6 +608,19 @@ namespace Before1800.PartB
                     scene.InteractWithBroadcast();
                     if (!string.IsNullOrEmpty(scene.Feedback)) Flash(scene.Feedback, 4.5f);
                     return;
+                case "clock": topic = Topic.Clock; return;
+                case "clock_after": topic = Topic.ClockLater; return;
+                case "clock_truth":
+                case "clock_evade":
+                    State.AnswerClockQuestion(id == "clock_truth" ? ClockAccount.Disclosed : ClockAccount.Evaded);
+                    topic = Topic.ClockAnswerReceipt;
+                    return;
+                case "clock_invite":
+                    if (!scene.TryPlayerAction("follow", "player")) { prompt = "先把眼前的事做完，我们再去。"; return; }
+                    State.InviteLinToClock();
+                    CloseTalk();
+                    Flash("林跟着你去厨房。站到钟前，给她留出看表盘的视线。");
+                    return;
                 case "go_camera": StartAction("inspect", SessionState.CameraTarget); return;
                 case "go_tv": StartAction("inspect", SessionState.BroadcastTarget); return;
                 case "go_door": StartAction("inspect", SessionState.SetBackTarget); return;
@@ -625,7 +704,8 @@ namespace Before1800.PartB
                 prompt = "先回应林眼前的事，可以选择上方的一句。";
                 return;
             }
-            if (Draft.Contains("镜头") || Draft.Contains("摄像")) topic = Topic.Camera;
+            if (State.ClockSoloReplaySeen && (Draft.Contains("挂钟") || Draft.Contains("三拍") || Draft.Contains("遥控器"))) topic = Topic.Clock;
+            else if (Draft.Contains("镜头") || Draft.Contains("摄像")) topic = Topic.Camera;
             else if (World.Tv && (Draft.Contains("电视") || Draft.Contains("广播") || Draft.Contains("预测"))) topic = Topic.Tv;
             else if (World.Station && (Draft.Contains("维修门") || Draft.Contains("布景"))) topic = Topic.Door;
             else if (Draft.Contains("骗") || Draft.Contains("瞒") || Draft.Contains("告诉你")) topic = Topic.Honesty;

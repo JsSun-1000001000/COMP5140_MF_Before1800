@@ -1,6 +1,10 @@
 # Before 18:00 — local NPC service
 
-For the current Unity 2021.3 / DeepSeek demo, follow [Part C 本地演示](../docs/PartC_本地演示.md). The current Unity adapter uses port 8180, sends `camera_test` or `set_back` as inspection targets, and can explicitly request a player-turn-based C2 transition. The sections below describe the original E1 client and remain applicable when running that client with its original configuration.
+For the current Unity 2021.3 / DeepSeek demo, follow [Part C 本地演示](../docs/PartC_本地演示.md). F2 enables the gateway on port 8180. The adapter sends reachable inspection targets (`camera_test`, `living_tv`, or `set_back`) and can request a player-turn-based C2 transition.
+
+For a built residence player, run `service\Play-With-Lin.cmd "path\to\Before1800.exe"` from the repository root. The launcher uses a private input prompt if the environment key is missing or rejected, locates an available DeepSeek chat model and starts a loopback gateway for this play session. It closes the gateway when the game exits. To distribute the launcher with a build, place `Play-With-Lin.cmd` beside `Before1800.exe`. Copy `play_with_lin.py`, `requirements.txt`, `app/*.py` and `prompts/lin_system.txt` to their corresponding paths inside a sibling `service` folder. Opening the executable directly starts with local topics. [住宅试玩说明](../docs/PartB_住宅试玩.md)
+
+The sections below describe the original E1 client and its configuration.
 
 This is the real HTTP integration for Lin's decisions. The default application calls an OpenAI-compatible `POST /chat/completions` endpoint. It has **no automatic mock or canned-response fallback**. At delivery, `.env` deliberately has no API key and no model. `/health` and `/npc/decide` therefore return HTTP 503 until configured.
 
