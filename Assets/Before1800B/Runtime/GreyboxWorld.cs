@@ -23,6 +23,10 @@ namespace Before1800.PartB
         [SerializeField] CameraStation cameraStation;
         [SerializeField] TvStation tvStation;
 
+        ApartmentDoor[] apartmentDoors;
+        bool[] checkedDoors;
+        ApartmentDoor followWaitDoor;
+        float doorCarvingGrace;
         NavMeshDataInstance navigation;
         Transform namePlate;
         Transform nameLabel;
@@ -57,6 +61,7 @@ namespace Before1800.PartB
         public SetBackStation Station => setBackStation && setBackStation.IsAvailable ? setBackStation : null;
         public CameraStation Camera => cameraStation && cameraStation.IsAvailable ? cameraStation : null;
         public TvStation Tv => tvStation && tvStation.IsAvailable ? tvStation : null;
+        internal bool FollowingNeedsOpenDoor => followWaitDoor && !followWaitDoor.WantsOpen;
         public NavMeshData NavigationData => navigationData;
         public bool UsesSceneBindings => usesSceneBindings;
         // The visual rig can glance toward the current waypoint before the body finishes turning.
@@ -121,6 +126,23 @@ namespace Before1800.PartB
         // pixel-perfect click while the sight ray still respects walls and furniture.
         public bool CanExamineCamera => initialized && cameraTarget && cameraTarget.gameObject.activeInHierarchy &&
             (CanDiscoverCamera || CanFocus(cameraTarget, cameraTarget.position, 2.65f, 8f));
+
+        internal ApartmentDoor DoorInView()
+        {
+            if (!initialized || apartmentDoors.Length == 0) return null;
+            const float reach = 2.5f;
+            var aim = new Ray(view.transform.position, view.transform.forward);
+            var hit = InteractionSight.FirstHit(aim.origin, aim.direction * reach, Player);
+            if (hit)
+            {
+                var direct = hit.GetComponentInParent<ApartmentDoor>();
+                if (direct && direct.isActiveAndEnabled && direct.transform.IsChildOf(transform)) return direct;
+                if (hit.IsChildOf(Lin) || IsCameraCollider(hit)) return null;
+            }
+            foreach (var door in apartmentDoors)
+                if (door.CanAimAt(aim, reach, Player)) return door;
+            return null;
+        }
 
         bool CanFocus(Transform target, Vector3 point, float distance, float angle)
         {
@@ -201,7 +223,7 @@ namespace Before1800.PartB
             if (!navigation.valid)
                 throw new System.InvalidOperationException("Could not register the Part B scene NavMesh.");
             if (!setBackStation) setBackStation = GetComponentInChildren<SetBackStation>(true);
-            // Residence keeps the living-room layout only; the full E5 station stays in the greybox.
+            // The full E5 maintenance station is authored only for the greybox.
             if (!setBackStation && !usesSceneBindings)
                 setBackStation = SetBackStation.BuildGreybox(transform, layoutMaterials, returnPoint);
             Material mark = layoutMaterials != null && layoutMaterials.Length > 4 ? layoutMaterials[4] : null;
@@ -211,6 +233,8 @@ namespace Before1800.PartB
             if (!tvStation) tvStation = GetComponentInChildren<TvStation>(true);
             if (!tvStation || !tvStation.IsAvailable)
                 tvStation = TvStation.Ensure(transform, mark);
+            apartmentDoors = GetComponentsInChildren<ApartmentDoor>();
+            checkedDoors = new bool[apartmentDoors.Length];
             openObservationPoint = observationPoint.position;
             namePlate = Lin.Find("Name plate");
             nameLabel = Lin.Find("Lin name");
@@ -226,6 +250,8 @@ namespace Before1800.PartB
             ResetActor(player, playerStart);
             ResetActor(lin, returnPoint);
             if (cameraStation) cameraStation.SnapTo(Lin);
+            foreach (var door in apartmentDoors) door.ResetDoor();
+            doorCarvingGrace = 0f;
             pitch = 0f;
             view.transform.localRotation = Quaternion.identity;
             FaceNamePlateToPlayer();
@@ -247,6 +273,7 @@ namespace Before1800.PartB
             turnSpeed = 0f;
             lastFacingFrame = -1;
             waitingForPlayer = false;
+            followWaitDoor = null;
             progress = stageTime = stuckTime = RemainingDistance = 0f;
             FailureCode = "";
         }
@@ -261,6 +288,17 @@ namespace Before1800.PartB
             var direction = Player.right * move.x + Player.forward * move.y;
             player.Move((direction * 3.35f + Vector3.down * .9f) * dt);
             FaceNamePlateToPlayer();
+        }
+
+        internal void StepDoors(float dt)
+        {
+            bool moved = false;
+            foreach (var door in apartmentDoors) moved |= door.Step(dt, player, lin);
+            bool settling = doorCarvingGrace > 0f;
+            doorCarvingGrace = moved ? .32f : Mathf.Max(0f, doorCarvingGrace - dt);
+            if (moved) Physics.SyncTransforms();
+            // Carving may still reflect the previous pose on the final motion frame.
+            if (moved || (settling && doorCarvingGrace == 0f)) corners = null;
         }
 
         public TravelResult StepInspect(float dt) => StepInspect(SessionState.CameraTarget, dt);
@@ -338,7 +376,20 @@ namespace Before1800.PartB
             if (corners == null || (plannedGoal - goal).sqrMagnitude > (following ? .09f : .0001f))
             {
                 var path = new NavMeshPath();
-                if (!PathTo(goal, path)) return Fail("RC_NAV_NO_PATH");
+                followWaitDoor = null;
+                if (!PathTo(goal, path))
+                {
+                    // Unity applies obstacle carving on a later frame. Give it
+                    // time to settle after a swing before diagnosing a bad route.
+                    if (following && doorCarvingGrace > 0f)
+                    {
+                        corners = null;
+                        walkingSpeed = 0f;
+                        return TravelResult.Moving;
+                    }
+                    if (!following || !FindDoorApproach(Lin.position, goal, path, out followWaitDoor))
+                        return Fail("RC_NAV_NO_PATH");
+                }
                 corners = path.corners;
                 nextCorner = 0;
                 plannedGoal = goal;
@@ -346,7 +397,13 @@ namespace Before1800.PartB
             // Require a complete path and actual physical proximity; an empty/partial path
             // or unknown remaining distance can never be used as an arrival signal.
             float arrivalDistance = stoppingDistance + (waitingForPlayer ? .15f : 0f);
-            if (Vector3.Distance(Lin.position, goal) <= arrivalDistance)
+            if (followWaitDoor && (corners.Length == 0 ||
+                Flat(corners[corners.Length - 1] - Lin.position).magnitude <= .22f))
+            {
+                walkingSpeed = progress = stageTime = stuckTime = 0f;
+                return TravelResult.Moving;
+            }
+            if (!followWaitDoor && Vector3.Distance(Lin.position, goal) <= arrivalDistance)
             {
                 RemainingDistance = 0f;
                 progress = stageTime = stuckTime = 0f;
@@ -365,7 +422,9 @@ namespace Before1800.PartB
             {
                 // Brake for the end of the path and shorten steps during a tight turn.
                 // A player reversing direction can otherwise send Lin skating sideways.
-                float distanceToStop = Mathf.Max(0f, Vector3.Distance(Lin.position, goal) - stoppingDistance);
+                float distanceToStop = followWaitDoor
+                    ? Flat(corners[corners.Length - 1] - Lin.position).magnitude
+                    : Mathf.Max(0f, Vector3.Distance(Lin.position, goal) - stoppingDistance);
                 float brakingSpeed = Mathf.Sqrt(2f * ResidenceAcceleration * distanceToStop);
                 float alignment = Vector3.Dot(Lin.forward, delta.normalized);
                 float desired = Mathf.Min(ResidenceSpeed, Mathf.Max(.12f, brakingSpeed))
@@ -394,13 +453,46 @@ namespace Before1800.PartB
         }
 
         bool PathTo(Vector3 goal, NavMeshPath path)
+            => PathBetween(Lin.position, goal, path);
+
+        static bool PathBetween(Vector3 from, Vector3 goal, NavMeshPath path)
         {
             NavMeshHit start, end;
             // The player can stand closer to a wall than the baked agent radius.
-            if (!NavMesh.SamplePosition(Lin.position, out start, .6f, NavMesh.AllAreas) ||
+            if (!NavMesh.SamplePosition(from, out start, .6f, NavMesh.AllAreas) ||
                 !NavMesh.SamplePosition(goal, out end, .55f, NavMesh.AllAreas)) return false;
             return NavMesh.CalculatePath(start.position, end.position, NavMesh.AllAreas, path) &&
                 path.status == NavMeshPathStatus.PathComplete;
+        }
+
+        // A disconnected target is a normal follow wait only if the walkable
+        // regions on opposite sides of real, shut household doors connect it.
+        // This also handles two shut doors between the living room and bathroom.
+        bool FindDoorApproach(Vector3 from, Vector3 goal, NavMeshPath path, out ApartmentDoor first)
+        {
+            first = null;
+            for (int i = 0; i < apartmentDoors.Length; i++)
+            {
+                var door = apartmentDoors[i];
+                if (checkedDoors[i] || !door.isActiveAndEnabled || !door.Panel || door.IsOpen) continue;
+                door.ApproachPoints(out var front, out var back);
+                checkedDoors[i] = true;
+                bool viaFront = CanReachAcrossDoor(from, front, back, goal, path);
+                bool reachable = viaFront || CanReachAcrossDoor(from, back, front, goal, path);
+                checkedDoors[i] = false;
+                if (!reachable) continue;
+                first = door;
+                // Recursive connectivity checks reuse the scratch path. Return
+                // the real walkable path to this first door's clear waiting spot.
+                return PathBetween(from, viaFront ? front : back, path);
+            }
+            return false;
+        }
+
+        bool CanReachAcrossDoor(Vector3 from, Vector3 near, Vector3 far, Vector3 goal, NavMeshPath path)
+        {
+            return PathBetween(from, near, path) &&
+                (PathBetween(far, goal, path) || FindDoorApproach(far, goal, path, out _));
         }
 
         bool ClearSight(Vector3 origin, Vector3 delta, float distance)
@@ -473,6 +565,12 @@ namespace Before1800.PartB
 
         internal static bool Clear(Vector3 origin, Vector3 delta, Transform observer, Transform target)
         {
+            var first = FirstHit(origin, delta, observer);
+            return !first || first.IsChildOf(target);
+        }
+
+        internal static Transform FirstHit(Vector3 origin, Vector3 delta, Transform observer)
+        {
             // The eye can sit on the rim of the player's CharacterController. Ignore
             // that actor only, keeping the nearest wall, prop or intended target.
             int count = Physics.RaycastNonAlloc(origin, delta.normalized, buffer, delta.magnitude,
@@ -494,7 +592,7 @@ namespace Before1800.PartB
                 first = item;
                 nearest = hit.distance;
             }
-            return !first || first.IsChildOf(target);
+            return first;
         }
     }
 }

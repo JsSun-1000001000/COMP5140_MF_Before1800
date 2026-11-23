@@ -95,7 +95,7 @@ class Decision(StrictModel):
 
     @model_validator(mode="after")
     def target_matches_action(self) -> Decision:
-        targets = {"reply": (None,), "follow": ("player",), "inspect": ("camera_test", "set_back", "camera_01")}
+        targets = {"reply": (None,), "follow": ("player",), "inspect": ("camera_test", "living_tv", "set_back", "camera_01")}
         if self.target_id not in targets[self.action]:
             raise ValueError("Target does not match the M1 action contract")
         if self.concern_status == "keep" and (self.concern_id is not None or self.basis_turn_id is not None):

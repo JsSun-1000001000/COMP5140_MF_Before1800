@@ -32,6 +32,7 @@ namespace Before1800.PartB
     {
         public SessionState State { get; private set; }
         public GreyboxWorld World { get; private set; }
+        public ClockRehearsal Clock { get; private set; }
         public string Feedback { get; private set; }
         public bool IntroOpen => intro != null;
         public bool DialogueOpen => dialogue != null;
@@ -77,6 +78,8 @@ namespace Before1800.PartB
             World.Initialize();
             hud = GetComponent<GreyboxHUD>();
             State = new SessionState();
+            var clockProps = GetComponentInChildren<ClockRehearsalProps>();
+            if (clockProps) Clock = new ClockRehearsal(State, World, clockProps);
             gameObject.AddComponent<PartCDialogue>();
             EnterIntro();
         }
@@ -90,6 +93,7 @@ namespace Before1800.PartB
             ResetSetBackChecks();
             ClearBroadcastObservation();
             World.ResetWorld();
+            Clock?.Reset();
             EnterIntro();
         }
 
@@ -126,6 +130,7 @@ namespace Before1800.PartB
                 testCompletion = null;
                 ResetSetBackChecks();
                 ClearBroadcastObservation();
+                Clock?.EndRun();
                 Feedback = State.LastResult;
                 ApplySimulationGate();
                 return;
@@ -137,7 +142,9 @@ namespace Before1800.PartB
                 Feedback = State.LastResult;
             }
             World.StepPlayer(move, look, dt);
+            World.StepDoors(dt);
             StepLin(dt);
+            Clock?.Step(dt);
             StepSetBackChecks(dt);
             StepCameraTracking(dt);
             StepBroadcastWatch(dt);

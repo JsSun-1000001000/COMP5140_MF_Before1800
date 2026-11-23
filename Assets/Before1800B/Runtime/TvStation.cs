@@ -30,6 +30,7 @@ namespace Before1800.PartB
         [SerializeField] TextMesh caption;
 
         Material screenMaterial;
+        bool usesApartmentScreen;
         Color idleColor = new Color(.08f, .09f, .11f);
 
         public Transform ObservationPoint => observationPoint;
@@ -207,6 +208,11 @@ namespace Before1800.PartB
         {
             DisplayedProgram = program;
             EnsureMaterial();
+            if (usesApartmentScreen)
+            {
+                screenRenderer.enabled = program != TvProgram.None;
+                if (caption) caption.gameObject.SetActive(screenRenderer.enabled);
+            }
             Color tone = ColorFor(program);
             if (screenMaterial.HasProperty("_Color")) screenMaterial.color = tone;
             if (screenMaterial.HasProperty("_BaseColor")) screenMaterial.SetColor("_BaseColor", tone);
@@ -264,10 +270,20 @@ namespace Before1800.PartB
             if (existing && existing.IsAvailable) return existing;
 
             Transform tvProp = FindNamed(worldRoot, "TVTumb");
+            var rehearsal = worldRoot.GetComponentInChildren<ClockRehearsalProps>(true);
+            var apartmentScreen = rehearsal ? rehearsal.TvTarget : null;
             Vector3 screenPos;
             Vector3 observePos;
             Quaternion face;
-            if (tvProp)
+            if (apartmentScreen)
+            {
+                screenPos = apartmentScreen.position;
+                Vector3 facing = Flat(apartmentScreen.forward).normalized;
+                observePos = screenPos + facing * 1.55f;
+                observePos.y = .02f;
+                face = Quaternion.LookRotation(-facing);
+            }
+            else if (tvProp)
             {
                 var bounds = BoundsOf(tvProp);
                 Vector3 facing = Flat(worldRoot.position + Vector3.forward - bounds.center);
@@ -298,18 +314,20 @@ namespace Before1800.PartB
                 root.rotation = face;
             }
             var station = existing ? existing : root.gameObject.AddComponent<TvStation>();
+            station.usesApartmentScreen = apartmentScreen != null;
 
             if (!station.screen)
             {
                 var panel = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
                 panel.name = "TV screen";
                 panel.SetParent(root, false);
-                panel.localPosition = Vector3.zero;
-                panel.localScale = new Vector3(1.15f, .68f, .04f);
+                // Leave room for the rehearsal card in front of the programme surface.
+                panel.localPosition = apartmentScreen ? Vector3.forward * .006f : Vector3.zero;
+                panel.localScale = apartmentScreen ? new Vector3(1.28f, .72f, .004f) : new Vector3(1.15f, .68f, .04f);
                 station.screen = panel;
                 station.screenRenderer = panel.GetComponent<Renderer>();
                 var hit = panel.GetComponent<Collider>();
-                if (hit) hit.enabled = true;
+                if (hit) hit.enabled = !apartmentScreen;
             }
             if (!station.control) station.control = station.screen;
             if (!station.observationPoint)
@@ -328,6 +346,11 @@ namespace Before1800.PartB
                 label.transform.localRotation = Quaternion.identity;
                 label.characterSize = .045f;
                 label.fontSize = 42;
+                if (apartmentScreen)
+                {
+                    label.font = PlayerUIFont.Get();
+                    label.GetComponent<MeshRenderer>().sharedMaterial = label.font.material;
+                }
                 label.anchor = TextAnchor.MiddleCenter;
                 label.alignment = TextAlignment.Center;
                 label.color = Color.white;

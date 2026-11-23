@@ -24,15 +24,13 @@ namespace Before1800.Home.Editor
             var source = EditorSceneManager.OpenScene(SourceScene, OpenSceneMode.Single);
             var house = source.GetRootGameObjects().Select(r => r.transform.Find("House/HouseGame Tamagotchi/House"))
                 .First(t => t != null);
-            var livingRoom = house.Find("Main");
-            var roomParts = livingRoom.GetComponentsInChildren<MeshRenderer>().Where(r => r.enabled).ToList();
-            var viewThroughDoors = house.Find("Kitchen").GetComponentsInChildren<MeshRenderer>()
-                .Concat(house.Find("Bedroom").GetComponentsInChildren<MeshRenderer>())
-                .Concat(house.Find("General").GetComponentsInChildren<MeshRenderer>());
-            // The exported hinged leaves are siblings of the room groups and door frames.
-            var doors = house.Cast<Transform>().Where(t => t.name.StartsWith("DoorPhysic ", StringComparison.Ordinal))
-                .SelectMany(t => t.GetComponentsInChildren<MeshRenderer>());
-            var geometry = roomParts.Concat(viewThroughDoors).Concat(doors).Where(r => r.enabled).ToList();
+            var fixedParts = new[] { "Main", "Kitchen", "Bedroom", "Toilet", "General", "DoorPhysic Exit" }
+                .Select(name => house.Find(name)).ToArray();
+            var clock = house.Find("Kitchen/WallClocks");
+            var remote = house.Find("Main/RemoteTV");
+            var geometry = fixedParts.SelectMany(part => part.GetComponentsInChildren<MeshRenderer>())
+                .Where(r => r.enabled && r.transform != remote &&
+                    (r.transform == clock || !r.transform.IsChildOf(clock))).ToList();
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
             SceneManager.SetActiveScene(scene);
@@ -42,27 +40,14 @@ namespace Before1800.Home.Editor
             shell.sharedMesh = ResidenceMesh.Build(geometry, Folder + "/WeTogetherApartment.asset", out var surfaces);
             interior.gameObject.AddComponent<MeshRenderer>().sharedMaterials = surfaces;
 
-            var collision = Node("Living room movement bounds", root.transform, Vector3.zero);
-            var sources = new List<NavMeshBuildSource>();
-            ColliderBox(collision, sources, "Living room floor", new Vector3(.5f, -.1f, .25f),
-                new Vector3(9.0f, .2f, 8.5f), true);
-            ColliderBox(collision, sources, "West boundary", new Vector3(-4.0f, 1.5f, .25f), new Vector3(.14f, 3, 8.6f));
-            ColliderBox(collision, sources, "East boundary", new Vector3(5.0f, 1.5f, .25f), new Vector3(.14f, 3, 8.6f));
-            ColliderBox(collision, sources, "North boundary", new Vector3(.5f, 1.5f, 4.45f), new Vector3(9, 3, .14f));
-            ColliderBox(collision, sources, "South boundary", new Vector3(.5f, 1.5f, -4.00f), new Vector3(9, 3, .14f));
-            var furniture = new HashSet<string> { "Sofa", "SofaChair", "SofaOttoman", "LivingTable", "TVTumb",
-                "LivingRoomBookScaff", "LivingRoomBigTumb", "LivingRoomPlantTumb1", "HallwayTumb", "CornerSofa",
-                "SofaTumb 1", "SofaTumb 2", "BigLamp", "CornerTumb", "LivingRoomTumb", "MiniShelvesStairs" };
-            foreach (var item in roomParts.Where(r => furniture.Contains(r.name))) {
-                var bounds = item.bounds;
-                // One batched renderer contains the console and the high shelf above
-                // the television. Its full bounding box would block the open sightline.
-                if (item.name == "TVTumb") bounds.SetMinMax(bounds.min,
-                    new Vector3(bounds.max.x, .64f, bounds.max.z));
-                ColliderBox(collision, sources, item.name, bounds.center, bounds.size);
-            }
+            var collision = Node("Apartment collision", root.transform, Vector3.zero);
+            var sources = CopyCollision(collision, fixedParts);
+            AddDoor(interior, house.Find("DoorPhysic Kitchen-Main"), 90f);
+            AddDoor(interior, house.Find("DoorPhysic Main-Bedroom"), -90f);
+            AddDoor(interior, house.Find("DoorPhysic Bedroom-Toilet"), -90f);
 
             var assets = Node("Evidence and actor anchors", root.transform, Vector3.zero);
+            ResidenceClockBuilder.Build(root, assets, clock, remote, house.Find("Main/TV"));
             var spawn = Node("player_start", assets, new Vector3(2.90f, .02f, 2.35f));
             spawn.rotation = Quaternion.LookRotation(new Vector3(-.05f, 0f, -1f));
             var home = Node("e1_return", assets, new Vector3(2.73f, .02f, .10f));
@@ -142,27 +127,86 @@ namespace Before1800.Home.Editor
             item.GetComponent<Renderer>().sharedMaterial = mat;
         }
 
-        private static void ColliderBox(Transform parent, List<NavMeshBuildSource> sources, string name,
-            Vector3 position, Vector3 size, bool floor = false)
+        private static void AddDoor(Transform parent, Transform original, float angle)
         {
-            var box = Node(name, parent, position).gameObject.AddComponent<BoxCollider>();
-            box.size = size;
-            sources.Add(new NavMeshBuildSource { shape = NavMeshBuildSourceShape.Box, transform = box.transform.localToWorldMatrix,
-                size = size, area = floor ? 0 : 1 });
+            // The exported model is Z-up. Keep its hinge position, but give the
+            // gameplay transform a vertical Y axis and the original art its own rotation.
+            var pivot = Node(original.name, parent, original.TransformPoint(original.GetComponent<HingeJoint>().anchor));
+            foreach (var renderer in original.GetComponentsInChildren<MeshRenderer>()) {
+                var part = Node(renderer.name, pivot, Vector3.zero);
+                part.SetPositionAndRotation(renderer.transform.position, renderer.transform.rotation);
+                part.localScale = renderer.transform.lossyScale;
+                part.gameObject.AddComponent<MeshFilter>().sharedMesh = renderer.GetComponent<MeshFilter>().sharedMesh;
+                part.gameObject.AddComponent<MeshRenderer>().sharedMaterials = renderer.sharedMaterials;
+            }
+            // The source "Block" trigger fits the entire leaf, including the latch end.
+            var bounds = original.Find("Block").GetComponent<BoxCollider>().bounds;
+            var leaf = pivot.gameObject.AddComponent<BoxCollider>();
+            leaf.center = pivot.InverseTransformPoint(bounds.center);
+            leaf.size = bounds.size;
+            var door = pivot.gameObject.AddComponent<ApartmentDoor>();
+            door.Configure(pivot, angle);
+            door.ConfigureSounds(AssetDatabase.LoadAssetAtPath<AudioClip>(Folder + "/Door Open 1.ogg"),
+                AssetDatabase.LoadAssetAtPath<AudioClip>(Folder + "/Door Close 1.ogg"));
+        }
+
+        private static List<NavMeshBuildSource> CopyCollision(Transform root, Transform[] parts)
+        {
+            var markups = new List<NavMeshBuildMarkup>();
+            foreach (var group in parts) {
+                var room = Node(group.name, root, Vector3.zero);
+                foreach (var original in group.GetComponentsInChildren<Collider>()) {
+                    if (original.isTrigger || !original.enabled) continue;
+                    var item = Node(original.name, room, original.transform.position);
+                    item.rotation = original.transform.rotation;
+                    item.localScale = original.transform.lossyScale;
+                    var copy = (Collider)item.gameObject.AddComponent(original.GetType());
+                    EditorUtility.CopySerialized(original, copy);
+                    // The exported console's box spans the empty gap below its wall shelf.
+                    if (original.name == "TVTumb" && copy is BoxCollider console) {
+                        var size = console.size;
+                        var center = console.center;
+                        center.z += (.64f - size.z) / 2f;
+                        console.size = new Vector3(size.x, size.y, .64f);
+                        console.center = center;
+                    }
+                    // Shells include the floors and low door sills. Furniture should
+                    // block the navmesh even when its top is flat enough to stand on.
+                    var n = original.name;
+                    bool walkable = n == "RoomMain" || n.StartsWith("Floor", StringComparison.Ordinal)
+                        || n.StartsWith("Wall", StringComparison.Ordinal) || n.StartsWith("RoomDoorCage", StringComparison.Ordinal)
+                        || n.Contains("Carpet") || n.Contains("LittleCover");
+                    if (walkable) markups.Add(new NavMeshBuildMarkup { root = item, overrideArea = true, area = 0 });
+                    if (n.StartsWith("RoomDoorCage ", StringComparison.Ordinal)) {
+                        // The adjoining floor meshes end at the two wall faces, leaving
+                        // the 30 cm thickness of the doorway unsupported.
+                        var sill = Node("Floor under " + n, room, original.transform.position - .05f * Vector3.up);
+                        sill.rotation = Quaternion.LookRotation(original.transform.TransformDirection(Vector3.right), Vector3.up);
+                        sill.gameObject.AddComponent<BoxCollider>().size = new Vector3(.42f, .10f, 1.1f);
+                        markups.Add(new NavMeshBuildMarkup { root = sill, overrideArea = true, area = 0 });
+                    }
+                }
+            }
+            var sources = new List<NavMeshBuildSource>();
+            UnityEngine.AI.NavMeshBuilder.CollectSources(root, ~0, NavMeshCollectGeometry.PhysicsColliders, 1, markups, sources);
+            return sources;
         }
 
         private static NavMeshData Navigation(List<NavMeshBuildSource> sources)
         {
             const string path = Folder + "/ResidenceNavigation.asset";
             var settings = NavMesh.GetSettingsByIndex(0);
+            settings.agentRadius = .28f;
+            settings.agentHeight = 1.77f;
+            settings.agentClimb = .20f;
             settings.overrideVoxelSize = true;
-            settings.voxelSize = .075f;
+            settings.voxelSize = .04f;
             var navigation = AssetDatabase.LoadAssetAtPath<NavMeshData>(path);
             if (navigation == null) {
                 navigation = new NavMeshData(settings.agentTypeID) { name = "ResidenceNavigation" };
                 AssetDatabase.CreateAsset(navigation, path);
             }
-            if (!UnityEngine.AI.NavMeshBuilder.UpdateNavMeshData(navigation, settings, sources, new Bounds(Vector3.up, new Vector3(18, 8, 18))))
+            if (!UnityEngine.AI.NavMeshBuilder.UpdateNavMeshData(navigation, settings, sources, new Bounds(new Vector3(-2, .9f, 1), new Vector3(30, 3, 14))))
                 throw new InvalidOperationException("The residence navigation bake failed.");
             EditorUtility.SetDirty(navigation);
             return navigation;
@@ -199,11 +243,19 @@ namespace Before1800.Home.Editor
             sun.transform.rotation = Quaternion.Euler(50, 15, 0);
             sun.color = new Color(1f, .93f, .84f);
             sun.intensity = .52f;
-            var lamp = Node("Living room ceiling light", root, new Vector3(.49f, 2.66f, -.48f)).gameObject.AddComponent<Light>();
+            AddCeilingLight(root, "Living room", new Vector3(.49f, 2.66f, -.48f), new Color(1f, .91f, .81f), 11f, .90f);
+            AddCeilingLight(root, "Kitchen", new Vector3(7.80f, 2.45f, .8f), new Color(1f, .94f, .84f), 7f, .92f);
+            AddCeilingLight(root, "Bedroom", new Vector3(-7.65f, 2.38f, -.75f), new Color(1f, .90f, .84f), 6f, .85f);
+            AddCeilingLight(root, "Bathroom", new Vector3(-13.08f, 2.34f, .54f), new Color(.88f, .95f, 1f), 4.5f, .70f);
+        }
+
+        private static void AddCeilingLight(Transform root, string room, Vector3 position, Color color, float range, float intensity)
+        {
+            var lamp = Node(room + " ceiling light", root, position).gameObject.AddComponent<Light>();
             lamp.type = LightType.Point;
-            lamp.range = 11f;
-            lamp.color = new Color(1f, .91f, .81f);
-            lamp.intensity = .90f;
+            lamp.range = range;
+            lamp.color = color;
+            lamp.intensity = intensity;
         }
     }
 }

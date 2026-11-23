@@ -17,7 +17,7 @@ namespace Before1800.PartB
         private Text introPlace, introTitle, introSynopsis, introGoal, introControls, modalTitle, modalBody, placeholder;
         private readonly Text[] sectionTitles = new Text[3], sectionBody = new Text[3];
         private readonly RectTransform[] sectionRules = new RectTransform[3];
-        private readonly Control[] talkChoices = new Control[3], modalChoices = new Control[3];
+        private readonly Control[] talkChoices = new Control[5], modalChoices = new Control[3];
         private Control journal, start, exitTalk, send, closeBook;
         private InputField input;
         private ScrollRect lineScroll;
@@ -45,6 +45,9 @@ namespace Before1800.PartB
             }
             openingPlace = scene.World.UsesSceneBindings ? "住宅  /  客厅" : "片场  /  调查室";
             introPlace.text = openingPlace;
+            introGoal.text = scene.Clock != null
+                ? "导演将在 18:00 回来。沙发前的茶几上，还放着你排练时用过的遥控器。"
+                : "导演将在 18:00 回来。先走近林，听听她怎么说。";
             previousJournal = null;
             shown = null;
             Refresh();
@@ -107,7 +110,8 @@ namespace Before1800.PartB
             }
             Set(clockText, flow.ClockText);
             Set(clockCaption, screen == PlayerScreen.Talk ? "交谈中 · 时间暂停" :
-                screen == PlayerScreen.Journal ? "阅读中 · 时间暂停" : openingPlace);
+                screen == PlayerScreen.Journal ? "阅读中 · 时间暂停" :
+                scene.World.UsesSceneBindings ? "住宅" : openingPlace);
 
             if (screen == PlayerScreen.Explore)
             {

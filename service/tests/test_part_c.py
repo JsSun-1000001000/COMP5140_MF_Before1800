@@ -27,7 +27,7 @@ def test_trust_is_only_accepted_for_the_open_concern_and_current_player_turn():
         validate_context_action(decision, req)
 
 
-@pytest.mark.parametrize("target", ["camera_test", "set_back"])
+@pytest.mark.parametrize("target", ["camera_test", "set_back", "living_tv"])
 def test_new_inspection_targets_still_must_exist_in_the_scene(target):
     req, _ = trust_turn()
     decision = Decision(dialogue="我去亲眼看看。", action="inspect", target_id=target,
