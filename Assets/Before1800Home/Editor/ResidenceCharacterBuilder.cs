@@ -202,52 +202,46 @@ namespace Before1800.Home.Editor
             string stem = System.IO.Path.GetFileNameWithoutExtension(AssetDatabase.GetAssetPath(original));
             string path = ArtFolder + "/" + stem + ".mat";
             var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
-            bool skin = stem == "Face_0" || stem == "Body";
-            if (skin || stem == "Face Layer")
+            // GraphicsSettings.customRenderPipeline is None: use Built-in Standard.
+            // Locked Poiyomi variants often compile to magenta on machines without a clean Poiyomi install.
+            if (stem == "Face Layer")
             {
-                // The original face has flat toon lighting and does not receive mesh shadows.
-                // Standard's normal-based diffuse puts a hard crease across the nose and cheeks.
-                var faceShader = skin ? original.shader :
-                    AssetDatabase.LoadAssetAtPath<Shader>(ArtFolder + "/Face Blush.shader");
-                if (!faceShader) throw new InvalidOperationException("Missing Mita face shader for " + stem);
-                var result = existing ? existing : new Material(faceShader) { name = stem };
-                result.shader = faceShader;
-                if (skin)
-                {
-                    result.CopyPropertiesFromMaterial(original);
-                    // Exposed neck, hands and thighs use the same room tint as the face.
-                    result.SetColor("_Color", new Color(.86f, .85f, .86f));
-                }
-                else
-                {
-                    result.mainTexture = original.mainTexture;
-                    result.SetFloat("_Opacity", .55f);
-                    result.renderQueue = (int)RenderQueue.Transparent;
-                }
+                var blush = AssetDatabase.LoadAssetAtPath<Shader>(ArtFolder + "/Face Blush.shader");
+                if (!blush) throw new InvalidOperationException("Missing Mita face blush shader.");
+                var result = existing ? existing : new Material(blush) { name = stem };
+                result.shader = blush;
+                result.mainTexture = original.mainTexture;
+                result.SetFloat("_Opacity", .55f);
+                result.renderQueue = (int)RenderQueue.Transparent;
                 if (existing) EditorUtility.SetDirty(result);
                 else AssetDatabase.CreateAsset(result, path);
                 return result;
             }
-            if (existing) return existing;
-            // Use each original atlas with a supported project shader, independent of Poiyomi's
-            // generated variant. In this project GraphicsSettings and all quality levels use Built-in.
-            bool urp = GraphicsSettings.currentRenderPipeline;
-            var shader = Shader.Find(urp ? "Universal Render Pipeline/Lit" : "Standard");
-            if (!shader) throw new InvalidOperationException("Missing residence character shader.");
-            var material = new Material(shader) { name = stem };
+            var shader = Shader.Find("Standard");
+            if (!shader) throw new InvalidOperationException("Missing Built-in Standard shader.");
+            var material = existing ? existing : new Material(shader) { name = stem };
+            material.shader = shader;
             var texture = original.GetTexture("_MainTex");
+            if (!texture) texture = original.mainTexture;
             if (!texture) throw new InvalidOperationException("Missing Mita albedo on " + stem);
-            material.SetTexture(urp ? "_BaseMap" : "_MainTex", texture);
-            material.SetFloat(urp ? "_Smoothness" : "_Glossiness", .08f);
+            material.SetTexture("_MainTex", texture);
+            material.SetFloat("_Glossiness", .08f);
+            material.SetFloat("_Metallic", 0f);
+            bool skin = stem == "Face_0" || stem == "Body";
+            material.SetColor("_Color", skin ? new Color(.86f, .85f, .86f) : Color.white);
             if (stem == "Hair_0")
             {
+                material.SetFloat("_Mode", 1f);
                 material.SetOverrideTag("RenderType", "TransparentCutout");
-                material.SetFloat(urp ? "_AlphaClip" : "_Mode", 1f);
-                material.SetFloat("_Cutoff", .45f);
+                material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+                material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
+                material.SetInt("_ZWrite", 1);
                 material.EnableKeyword("_ALPHATEST_ON");
+                material.SetFloat("_Cutoff", .45f);
                 material.renderQueue = (int)RenderQueue.AlphaTest;
             }
-            AssetDatabase.CreateAsset(material, path);
+            if (existing) EditorUtility.SetDirty(material);
+            else AssetDatabase.CreateAsset(material, path);
             return material;
         }
 

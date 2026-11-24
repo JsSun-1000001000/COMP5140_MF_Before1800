@@ -11,7 +11,7 @@ def test_language_survives_context_without_changing_evidence(language):
     assert parsed.context.output_language==language
     assert parsed.context.verified_evidence==req.context.verified_evidence
 
-@pytest.mark.parametrize('target',['memory_sofa','memory_books','memory_plant','memory_table','memory_shoes','memory_lamp','memory_mirror','memory_fridge','memory_chair','memory_window'])
+@pytest.mark.parametrize('target',['memory_sofa','memory_books','memory_plant','memory_table','memory_shoes','memory_lamp','memory_mirror','memory_fridge','memory_chair','memory_window','memory_bedside','memory_wardrobe','memory_sink'])
 def test_everyday_inspection_needs_known_reachable_target(target):
     req=turn();decision=proposal(req,'inspect',target)
     with pytest.raises(ValueError):validate_context_action(decision,req)

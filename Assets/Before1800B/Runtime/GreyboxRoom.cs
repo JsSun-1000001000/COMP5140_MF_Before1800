@@ -144,10 +144,11 @@ namespace Before1800.PartB
 
         Material Paint(string name, Color color)
         {
-            var shader = GraphicsSettings.currentRenderPipeline
-                ? Shader.Find("Universal Render Pipeline/Lit") : Shader.Find("Standard");
+            bool urp = GraphicsSettings.currentRenderPipeline;
+            var shader = Shader.Find(urp ? "Universal Render Pipeline/Lit" : "Standard") ?? Shader.Find("Standard");
             var mat = new Material(shader) { name = name };
-            mat.color = color;
+            if (urp && mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+            else mat.color = color;
             if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", .18f);
             if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", .18f);
             Materials.Add(mat);
