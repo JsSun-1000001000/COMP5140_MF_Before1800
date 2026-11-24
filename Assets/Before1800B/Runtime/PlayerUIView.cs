@@ -17,7 +17,7 @@ namespace Before1800.PartB
         private Text introPlace, introTitle, introSynopsis, introGoal, introControls, modalTitle, modalBody, placeholder;
         private readonly Text[] sectionTitles = new Text[3], sectionBody = new Text[3];
         private readonly RectTransform[] sectionRules = new RectTransform[3];
-        private readonly Control[] talkChoices = new Control[5], modalChoices = new Control[3];
+        private readonly Control[] talkChoices = new Control[5], modalChoices = new Control[5];
         private Control journal, start, exitTalk, send, closeBook;
         private InputField input;
         private ScrollRect lineScroll;
@@ -30,6 +30,8 @@ namespace Before1800.PartB
         private int choiceCount, lastCompositionFrame = -10, submitFrame = -10;
         private bool changedLayout, resetReadingPosition;
         private bool visible = true;
+        private int languageRevision=-1;
+        private readonly System.Collections.Generic.Dictionary<Text,string> labelSources = new System.Collections.Generic.Dictionary<Text,string>();
         private string openingPlace;
 
         public bool Editing => visible && input && input.isFocused;
@@ -45,9 +47,7 @@ namespace Before1800.PartB
             }
             openingPlace = scene.World.UsesSceneBindings ? "住宅  /  客厅" : "片场  /  调查室";
             introPlace.text = openingPlace;
-            introGoal.text = scene.Clock != null
-                ? "导演将在 18:00 回来。沙发前的茶几上，还放着你排练时用过的遥控器。"
-                : "导演将在 18:00 回来。先走近林，听听她怎么说。";
+            introGoal.text = "这是信使的最后一次拜访。18:00 前，你可以照常告别，也可以和林查清疑点；是否离开，最终由她决定。";
             previousJournal = null;
             shown = null;
             Refresh();
@@ -92,6 +92,9 @@ namespace Before1800.PartB
         private void Refresh()
         {
             if (!canvasRect || flow == null || !visible) return;
+            if(languageRevision!=GameLanguage.Revision){languageRevision=GameLanguage.Revision; previousIntro=-1; foreach(var item in labelSources) if(item.Key)item.Key.text=GameLanguage.T(item.Value); previousJournal=null;shown=null;changedLayout=true;}
+            UpdateExperienceControls();
+            UpdateGuideControls();
             var screen = flow.Screen;
             bool transition = shown != screen;
             if (transition)
@@ -104,7 +107,7 @@ namespace Before1800.PartB
                 Active(talk, screen == PlayerScreen.Talk);
                 Active(book, screen == PlayerScreen.Journal);
                 Active(modal, screen == PlayerScreen.Menu || screen == PlayerScreen.Error ||
-                    screen == PlayerScreen.Timeout || screen == PlayerScreen.Wait);
+                    screen == PlayerScreen.Timeout || screen == PlayerScreen.Wait || screen == PlayerScreen.Reading || screen == PlayerScreen.Ending);
                 journal.Node.gameObject.SetActive(screen == PlayerScreen.Explore || screen == PlayerScreen.Talk);
                 changedLayout = true;
             }
@@ -138,7 +141,10 @@ namespace Before1800.PartB
                     changedLayout = true;
                 }
                 if (!input.isFocused && input.text != flow.Draft) input.SetTextWithoutNotify(flow.Draft ?? "");
-                Set(placeholder, flow.HasDialogueService ? "想对林说什么？" : "预设对话 · 可提到镜头、隐瞒或同行");
+                Set(placeholder, "想对林说什么？");
+                input.interactable=!flow.Waiting;
+                foreach(var choice in talkChoices)choice.Button.interactable=!flow.Waiting;
+                Set(exitTalk.Label,flow.Waiting ? "先等一下   Esc" : "结束交谈   Esc");
                 send.Button.interactable = flow.CanSend && !string.IsNullOrWhiteSpace(input.text);
                 send.Label.color = send.Button.interactable ? Cream : new Color32(169, 150, 137, 255);
                 UpdateChoices(talkChoices);
@@ -157,10 +163,10 @@ namespace Before1800.PartB
                 changedLayout = true;
             }
             else if (screen == PlayerScreen.Menu || screen == PlayerScreen.Error ||
-                     screen == PlayerScreen.Timeout || screen == PlayerScreen.Wait)
+                     screen == PlayerScreen.Timeout || screen == PlayerScreen.Wait || screen == PlayerScreen.Reading || screen == PlayerScreen.Ending)
             {
-                Set(modalTitle, screen == PlayerScreen.Menu ? (string.IsNullOrEmpty(flow.Line) ? "暂停" : "重新开始？") : screen == PlayerScreen.Timeout ?
-                    "导演回来了" : screen == PlayerScreen.Wait ? "等待林的回复" : "林停下了");
+                Set(modalTitle, screen == PlayerScreen.Reading || screen == PlayerScreen.Ending ? flow.ModalTitle : screen == PlayerScreen.Menu ? (string.IsNullOrEmpty(flow.Line) ? "暂停" : "确认选择") : screen == PlayerScreen.Timeout ?
+                    "导演回来了" : screen == PlayerScreen.Wait ? "等待林的回复" : "这边暂时过不去");
                 if (modalBody.text != flow.Line)
                 {
                     changedLayout = true;
@@ -211,7 +217,9 @@ namespace Before1800.PartB
         {
             if (!EventSystem.current) return;
             Selectable target = null;
-            if (screen == PlayerScreen.Intro) target = start.Button;
+            if(scene.Story && scene.Story.LetterComparison) target=letterContinue.Button;
+            else if(SettingsOpen) target=languageButton.Button;
+            else if (screen == PlayerScreen.Intro) target = start.Button;
             else if (screen == PlayerScreen.Talk) target = choiceCount > 0 ? talkChoices[0].Button : exitTalk.Button;
             else if (screen == PlayerScreen.Journal) target = closeBook.Button;
             else if (modal.gameObject.activeSelf && choiceCount > 0) target = modalChoices[0].Button;
@@ -222,7 +230,7 @@ namespace Before1800.PartB
         {
             if (!EventSystem.current || flow.Screen == PlayerScreen.Explore) return;
             // Sibling order is the reading order (e.g. choices, draft, send, leave).
-            var controls = canvasRect.GetComponentsInChildren<Selectable>();
+            var controls = (SettingsOpen ? settingsCard : canvasRect).GetComponentsInChildren<Selectable>();
             int current = Array.FindIndex(controls, item => item.gameObject == EventSystem.current.currentSelectedGameObject);
             for (int step = 1; step <= controls.Length; step++)
             {
@@ -259,7 +267,7 @@ namespace Before1800.PartB
 
         private static void Set(Text field, string value)
         {
-            value = value ?? "";
+            value = GameLanguage.T(value ?? "");
             if (field.text != value) field.text = value;
         }
     }

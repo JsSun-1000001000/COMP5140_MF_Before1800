@@ -25,13 +25,16 @@ namespace Before1800.PartB.Tests
                 new LoadSceneParameters(LoadSceneMode.Single));
             yield return null;
             scene = UnityEngine.Object.FindObjectOfType<PartBScene>();
+            // Canvas mechanics are deterministic; live narrative decisions have separate validation.
+            scene.GetComponent<PartCDialogue>().SetLive(false);
             flow = scene.GetComponent<GreyboxHUD>().Flow;
             view = scene.GetComponent<PlayerUIView>();
             Assert.AreEqual(PlayerScreen.Intro, flow.Screen);
             Assert.IsFalse(flow.DebugOpen);
             var first = EventSystem.current.currentSelectedGameObject;
             Assert.IsNotNull(first, "The intro needs a keyboard-accessible primary action.");
-            ExecuteEvents.Execute(first, new BaseEventData(EventSystem.current), ExecuteEvents.submitHandler);
+            for(int page=0;page<4;page++)
+            { ExecuteEvents.Execute(first, new BaseEventData(EventSystem.current), ExecuteEvents.submitHandler); yield return null; }
             yield return null;
             Assert.AreEqual(PlayerScreen.Explore, flow.Screen);
         }
@@ -55,9 +58,13 @@ namespace Before1800.PartB.Tests
         [UnityTest]
         public IEnumerator WalkingStraightTowardsLinKeepsTheVisibleConversationPrompt()
         {
+            var before = scene.World.Player.position;
+            var direction = scene.World.Player.forward;
+            Assert.IsFalse(scene.State.IsPaused);
             for (int i = 0; i < 14; i++) scene.StepSimulation(.02f, Vector2.up, Vector2.zero);
             yield return null;
-            Assert.Less(Vector3.Distance(scene.World.Player.position, scene.World.Lin.position), 1.5f);
+            Assert.Less(Vector3.Distance(scene.World.Player.position, scene.World.Lin.position), 1.5f,
+                "start=" + before + " forward=" + direction + " end=" + scene.World.Player.position + " Lin=" + scene.World.Lin.position + " screen=" + flow.Screen);
             Assert.IsTrue(scene.World.CanTalkToLin, "A player facing Lin from the spawn should still be able to talk after walking closer.");
             flow.Use();
             Assert.AreEqual(PlayerScreen.Talk, flow.Screen);
@@ -137,7 +144,9 @@ namespace Before1800.PartB.Tests
             scene.PlayerLineRequested += (request, text) => { dispatched = request; requests++; Assert.AreEqual(message, text); };
             flow.Send(message);
             Assert.IsNotNull(dispatched);
-            Assert.AreEqual(PlayerScreen.Wait, flow.Screen);
+            Assert.AreEqual(PlayerScreen.Talk, flow.Screen);
+            Assert.IsTrue(flow.Waiting);
+            Assert.IsFalse(flow.CanSend);
             flow.Send(message);
             Assert.AreEqual(1, requests);
             flow.Back();

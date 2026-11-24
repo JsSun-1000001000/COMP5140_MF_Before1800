@@ -40,13 +40,14 @@ namespace Before1800.PartB
 
         private void ReadCurrentInput()
         {
+            if(playerView.SettingsOpen){if(Input.GetKeyDown(KeyCode.Escape))playerView.CloseSettings();return;}
             if (playerView.Editing)
             {
                 if (Input.GetKeyDown(KeyCode.Escape) && string.IsNullOrEmpty(Input.compositionString))
                     playerView.BlurInput();
                 return;
             }
-            if (Input.GetKeyDown(KeyCode.F1) && (Flow.DebugOpen ||
+            if (Application.isEditor && Input.GetKeyDown(KeyCode.F1) && (Flow.DebugOpen ||
                 Flow.Screen == PlayerScreen.Explore || Flow.Screen == PlayerScreen.Talk ||
                 Flow.Screen == PlayerScreen.Intro || Flow.Screen == PlayerScreen.Timeout))
             {
@@ -61,12 +62,14 @@ namespace Before1800.PartB
                     case PlayerScreen.Explore:
                         if (Input.GetKeyDown(KeyCode.Escape)) Flow.ToggleMenu();
                         else if (Input.GetKeyDown(KeyCode.J)) Flow.ToggleJournal();
+                        else if (Input.GetKeyDown(KeyCode.H)) scene.Story?.OpenHelp();
                         else if (Input.GetKeyDown(KeyCode.E)) Flow.Use();
                         break;
                     case PlayerScreen.Talk:
                         if (Input.GetKeyDown(KeyCode.Escape)) Flow.Back();
                         else if (Input.GetKeyDown(KeyCode.J)) Flow.ToggleJournal();
                         break;
+                    case PlayerScreen.Reading:
                     case PlayerScreen.Journal:
                         if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.J)) Flow.Back();
                         break;
@@ -92,6 +95,7 @@ namespace Before1800.PartB
                 return;
             }
             var camera = scene.World.ViewCamera;
+            if (!scene.MenuOpen) scene.World.FaceConversationPartner(Time.unscaledDeltaTime);
             if (!framing)
             {
                 framing = true;

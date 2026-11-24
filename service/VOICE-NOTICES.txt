@@ -1,0 +1,29 @@
+Lin speech / 2026-11-24
+
+The local speech endpoint uses Kokoro v1.1 Chinese/English neural speech.
+Model: https://huggingface.co/hexgrad/Kokoro-82M-v1.1-zh
+ONNX conversion and runtime: https://github.com/thewh1teagle/kokoro-onnx
+Phonemizer: https://github.com/hexgrad/misaki
+Model license: Apache License 2.0. Weights are unmodified.
+Mandarin voice: zf_001. English voice: af_maple.
+This is synthetic speech, not an actor recording or voice clone.
+
+This Mac is already installed. To prepare another machine:
+1. In service/, create a Python 3.12 virtual environment named .venv.
+2. Install requirements.txt in that environment.
+3. Run .venv/bin/python setup_voice.py to fetch and verify the three assets.
+4. Start the game gateway as usual. Speech is generated locally; it requires
+   no speech API key. The dialogue model still uses the existing gateway.
+
+Model assets are deliberately Git-ignored. Do not commit .env or API keys.
+If copying to a demo computer, include service/voice-models or run setup.
+On Windows use .venv\Scripts\python.exe and the Windows Unity player.
+The current tested platform is this Mac; another platform needs a smoke test.
+
+Kokoro's startup is lazy; the first sentence may take longer than later ones.
+If neural speech fails, subtitles remain. We do not fall back to the old
+operating-system voice. Music and sound effects do not need this service.
+
+The locally authored score is Assets/Before1800B/Resources/Audio/LastLetter.wav.
+The piano-like score and procedural foley were generated for this project.
+No third-party music recording was added in this revision.

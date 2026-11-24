@@ -25,6 +25,9 @@ namespace Before1800.PartB.Tests
                 new LoadSceneParameters(LoadSceneMode.Single));
             yield return null;
             scene = Object.FindObjectOfType<PartBScene>();
+            scene.AcceptHardwareInput=false;
+            // These geometry tests use the explicit local rehearsal, never the paid model service.
+            scene.GetComponent<PartCDialogue>().SetLive(false);
             interactions = scene.GetComponent<GreyboxHUD>().Flow;
             scene.ToggleIntroOff();
         }
@@ -292,6 +295,10 @@ namespace Before1800.PartB.Tests
             WalkThroughRoom(new Vector3(.53f, .02f, 3.35f));
             World.ViewCamera.transform.LookAt(new Vector3(.53f, 1.15f, 4.71f));
             interactions.Use();
+            // The final visit now offers a deliberate farewell at the real front door.
+            // Reading that choice pauses movement; returning to the room preserves its collision.
+            Assert.AreEqual(PlayerScreen.Reading, interactions.Screen);
+            scene.Story.DismissReading();
             for (int i = 0; i < 55; i++) Move(Vector3.forward);
             Assert.That(World.Player.position.z, Is.InRange(3.6f, 4.65f), "Exterior entrance should remain a solid boundary.");
             Assert.IsFalse(scene.State.RouteConfirmed);

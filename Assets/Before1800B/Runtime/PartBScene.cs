@@ -33,6 +33,7 @@ namespace Before1800.PartB
         public SessionState State { get; private set; }
         public GreyboxWorld World { get; private set; }
         public ClockRehearsal Clock { get; private set; }
+        public LastVisitStory Story { get; private set; }
         public string Feedback { get; private set; }
         public bool IntroOpen => intro != null;
         public bool DialogueOpen => dialogue != null;
@@ -80,6 +81,11 @@ namespace Before1800.PartB
             State = new SessionState();
             var clockProps = GetComponentInChildren<ClockRehearsalProps>();
             if (clockProps) Clock = new ClockRehearsal(State, World, clockProps);
+            if (World.UsesSceneBindings) { Story = gameObject.AddComponent<LastVisitStory>(); Story.Bind(this); }
+            if (World.UsesSceneBindings) gameObject.AddComponent<ResidenceMemories>().Bind(this);
+            gameObject.AddComponent<ResidenceAudio>();
+            gameObject.AddComponent<LinVoice>();
+            gameObject.AddComponent<WorldLanguage>();
             gameObject.AddComponent<PartCDialogue>();
             EnterIntro();
         }
@@ -105,6 +111,7 @@ namespace Before1800.PartB
             ApplySimulationGate();
         }
 
+        internal bool AcceptHardwareInput { get; set; } = true;
         private void Update()
         {
             hud.ReadShortcuts();
@@ -116,15 +123,22 @@ namespace Before1800.PartB
                 return;
             }
 
-            var move = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+            if(!AcceptHardwareInput){StepSimulation(Time.deltaTime,Vector2.zero,Vector2.zero);return;}
+
+            // Keep looking available without a mouse (trackpads, presentations and accessibility).
+            // Arrow keys belong to UI navigation while paused, and to the camera while exploring.
+            var move = new Vector2((Input.GetKey(KeyCode.D) ? 1 : 0) - (Input.GetKey(KeyCode.A) ? 1 : 0),
+                (Input.GetKey(KeyCode.W) ? 1 : 0) - (Input.GetKey(KeyCode.S) ? 1 : 0));
             var look = new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y"));
+            look += new Vector2((Input.GetKey(KeyCode.RightArrow) ? 1 : 0) - (Input.GetKey(KeyCode.LeftArrow) ? 1 : 0),
+                (Input.GetKey(KeyCode.UpArrow) ? 1 : 0) - (Input.GetKey(KeyCode.DownArrow) ? 1 : 0)) * (65f / 2.1f * Time.deltaTime);
             StepSimulation(Time.deltaTime, move, look);
         }
 
         internal void StepSimulation(float dt, Vector2 move, Vector2 look)
         {
             if (State.IsPaused || dt <= 0f) return;
-            State.AdvanceClock(dt);
+            State.AdvanceClock(dt, 5);
             if (State.TimedOut)
             {
                 testCompletion = null;
@@ -177,7 +191,12 @@ namespace Before1800.PartB
                 case ActionStage.Arrived:
                     if (trackingCamera != null && ticket == trackingCamera) return;
                     if (observingBroadcast != null && ticket == observingBroadcast) return;
-                    if (!World.AtObservation(ticket.TargetId) && State.ReportObservationLost(ticket)) ShowNavigationError();
+                    if(World.AtObservation(ticket.TargetId))World.ClearSightWait();
+                    else
+                    {
+                        if(World.UsesSceneBindings && World.CanInspect(ticket.TargetId)) World.StepInspect(ticket.TargetId,dt);
+                        else if(State.ReportObservationLost(ticket))ShowNavigationError();
+                    }
                     return;
                 case ActionStage.Returning:
                     travel = World.StepReturn(ticket.TargetId, dt);
@@ -209,12 +228,24 @@ namespace Before1800.PartB
 
         private void FailTravel(ActionTicket ticket)
         {
-            if (State.ReportFailure(ticket, World.FailureCode)) ShowNavigationError();
+            if (State.ReportFailure(ticket, World.FailureCode))
+            {
+                Debug.Log("[Navigation] "+ticket.TargetId+" "+World.FailureCode+" at "+World.Lin.position);
+                ShowNavigationError();
+            }
         }
 
         private void ShowNavigationError()
         {
             Feedback = State.LastResult;
+            if(World.UsesSceneBindings)
+            {
+                // Navigation feedback belongs in the room; it must not trap the
+                // player in a paused error dialog or erase already witnessed facts.
+                World.ResetTravel();
+                hud.Flow.NavigationNotice("这边过不去。给林让一点位置，再邀请她试一次。");
+                return;
+            }
             navigationError = State.AcquirePause(PauseReason.Error, "navigation");
             ApplySimulationGate();
         }
@@ -249,7 +280,7 @@ namespace Before1800.PartB
             CameraTrackHint = "";
             if (World.Camera) World.Camera.SetSignal(CameraSignal.Confirmed);
             World.ResetTravel();
-            Feedback = "E1 verified. Lin saw the housing follow her.";
+            Feedback = "林亲眼看见镜头外壳跟着自己转动。";
             return true;
         }
 
@@ -282,7 +313,7 @@ namespace Before1800.PartB
             bool atTv = State.Stage == ActionStage.Arrived && State.Active?.TargetId == SessionState.BroadcastTarget &&
                 World.AtObservation(SessionState.BroadcastTarget);
             if (!atTv) return null;
-            if (!tv.PlayerCanOperate(view)) return "对准客厅电视，继续 E4 实验";
+            if (!tv.PlayerCanOperate(view)) return "对准客厅电视，继续预测实验";
             if (tv.CanStartSequence) return "[F] 启动电视序列（预测已锁定）";
             if (tv.CanConfirmPredictedShow)
                 return "[F] 请林点播预测节目：" + TvStation.LabelFor(tv.PredictedProgram);
@@ -589,7 +620,7 @@ namespace Before1800.PartB
                 !State.TryCompleteBroadcastExperiment(ticket, eventId)) return false;
             ClearBroadcastObservation();
             World.ResetTravel();
-            Feedback = "E4 verified. 林确认电视会按她想看的节目切换。";
+            Feedback = "林确认电视会按她想看的节目切换。";
             BroadcastHint = Feedback;
             return true;
         }

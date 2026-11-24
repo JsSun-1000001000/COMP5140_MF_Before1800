@@ -53,10 +53,10 @@ namespace Before1800.PartB.Tests
                 float closed = head.GetBlendShapeWeight(blink);
                 Assert.GreaterOrEqual(closed, 85f, "The real head mesh must reach a closed-eye pose");
 
-                scene.ToggleDialogue();
+                scene.ToggleMenu();
                 for (int i = 0; i < 12; i++) yield return null;
                 Assert.AreEqual(closed, head.GetBlendShapeWeight(blink), .1f, "Blink should freeze with the character");
-                scene.ToggleDialogue();
+                scene.ToggleMenu();
                 for (int i = 0; i < 30; i++) yield return null;
                 Assert.Less(head.GetBlendShapeWeight(blink), 1f, "The authored blink should reopen both eyes");
             }
@@ -92,10 +92,10 @@ namespace Before1800.PartB.Tests
                 float active = face.GetBlendShapeWeight(brow);
                 Assert.That(active, Is.InRange(45f, 60f));
                 Assert.That(face.GetBlendShapeWeight(mouth), Is.InRange(38f, 50f));
-                scene.ToggleDialogue();
+                scene.ToggleMenu();
                 for (int i = 0; i < 10; i++) yield return null;
                 Assert.AreEqual(active, face.GetBlendShapeWeight(brow), .05f);
-                scene.ToggleDialogue();
+                scene.ToggleMenu();
                 for (int i = 0; i < 155; i++) yield return null;
                 Assert.Less(face.GetBlendShapeWeight(brow), 1f);
                 for (int i = 0; i < 45; i++)
@@ -142,12 +142,12 @@ namespace Before1800.PartB.Tests
                     maximum = Mathf.Max(maximum, headTurn);
                     if (!checkedPause && headTurn > 6f)
                     {
-                        scene.ToggleDialogue();
+                        scene.ToggleMenu();
                         for (int j = 0; j < 8; j++) yield return null;
                         Assert.AreEqual(headTurn, after.headYaw * direction, .15f);
                         Assert.AreEqual(eyeTurn, after.eyeYaw * direction, .15f);
                         checkedPause = true;
-                        scene.ToggleDialogue();
+                        scene.ToggleMenu();
                     }
                     neutralAgain |= maximum >= 8f && Mathf.Abs(after.headYaw) < .2f && Mathf.Abs(after.eyeYaw) < .3f;
                 }

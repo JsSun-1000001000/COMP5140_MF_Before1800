@@ -103,7 +103,12 @@ namespace Before1800.PartB
         public ulong Version { get; private set; }
         public double ElapsedGameSeconds { get; private set; }
         public bool TimedOut { get; private set; }
-        public bool IsPaused => TimedOut || pauses.Count != 0;
+        public string Ending { get; private set; } = "none";
+        public bool IsTerminal => TimedOut || Ending != "none";
+        public bool IsPaused => IsTerminal || pauses.Count != 0;
+        public bool HasRequiredEvidence => verified.Count >= 3 && E5Verified;
+        public bool CanAgreeEscape => !IsTerminal && HasRequiredEvidence && RouteConfirmed &&
+            IsConcernResolved("C1") && IsConcernResolved("C2") && IsConcernResolved("C3");
         public bool E1Verified => verified.Contains("E1");
         public bool E4Verified => verified.Contains("E4");
         public bool E5Verified => verified.Contains("E5");
@@ -157,6 +162,7 @@ namespace Before1800.PartB
             Version = 0;
             ElapsedGameSeconds = 0;
             TimedOut = EscapeAgreed = RouteConfirmed = WithdrawUsed = false;
+            Ending = "none";
             CameraDiscovered = DoorDiscovered = TvDiscovered = false;
             ClockRemoteTaken = ClockBaselineSeen = ClockSoloReplaySeen = false;
             ClockInvited = ClockWitnessed = ClockCardRead = false;
@@ -266,7 +272,7 @@ namespace Before1800.PartB
                 },
                 cooperation_mode = Cooperation.ToString().ToLowerInvariant(),
                 route_confirmed = RouteConfirmed, escape_agreed = EscapeAgreed,
-                ending = TimedOut ? "timeout" : "none",
+                ending = Ending,
                 pending_action = Pending?.Action, active_action = Active?.Action,
                 action_stage = Stage.ToString().ToLowerInvariant(),
                 target_id = (Pending ?? Active)?.TargetId,
@@ -277,7 +283,7 @@ namespace Before1800.PartB
 
         internal PauseToken AcquirePause(PauseReason reason, string owner)
         {
-            if (TimedOut || reason == PauseReason.Terminal) return null;
+            if (IsTerminal || reason == PauseReason.Terminal) return null;
             if (string.IsNullOrWhiteSpace(owner)) throw new ArgumentException("A pause requires an owner.", nameof(owner));
             var token = new PauseToken(RunId, reason, owner);
             pauses.Add(token);
@@ -291,7 +297,7 @@ namespace Before1800.PartB
 
         public bool HasPause(PauseReason reason)
         {
-            if (reason == PauseReason.Terminal) return TimedOut;
+            if (reason == PauseReason.Terminal) return IsTerminal;
             foreach (var token in pauses)
                 if (token.Reason == reason) return true;
             return false;
@@ -307,11 +313,69 @@ namespace Before1800.PartB
             return true;
         }
 
+        public bool CanResolveConcern(string id)
+        {
+            if (IsTerminal || string.IsNullOrEmpty(id) || !concerns.ContainsKey(id) || concerns[id]) return false;
+            return id == "C2" || (id == "C1" && HasRequiredEvidence) || (id == "C3" && RouteConfirmed);
+        }
+
+        // The transport verifies the request identity and semantic proposal first.
+        // This boundary enforces facts; no keyword can resolve an emotional concern.
+        public bool TryResolveConcernFromAcceptedTurn(string id, string turnId, string playerInput)
+        {
+            if (!CanResolveConcern(id) || string.IsNullOrWhiteSpace(turnId) || string.IsNullOrWhiteSpace(playerInput)) return false;
+            concerns[id] = true;
+            Commit(id + " resolved from player turn " + turnId);
+            return true;
+        }
+
         internal void ResolveTrustFromAcceptedTurn(string turnId)
         {
-            if (concerns["C2"]) return;
-            concerns["C2"] = true;
-            Commit("C2 resolved from player turn " + turnId);
+            // Compatibility with the existing adapter, which has already validated a nonblank turn.
+            TryResolveConcernFromAcceptedTurn("C2", turnId, "accepted player turn");
+        }
+
+        public static bool IsStoryTarget(string target) => target == "sealed_letter" || target == "parent_reply" ||
+            target == "parents_diary" || target == "friend_postcard" || target == "exit_door" || ResidenceMemories.IsTarget(target);
+
+        internal bool TryCompleteStoryInspection(ActionTicket ticket)
+        {
+            if (!IsCurrent(ticket) || ticket.Action != "inspect" || activeStage != ActionStage.Arrived || !IsStoryTarget(ticket.TargetId)) return false;
+            activeStage = ActionStage.Returning;
+            Commit("Lin personally read " + ticket.TargetId + ".");
+            RecordActionResult(ticket, "observed", LastResult);
+            return true;
+        }
+
+        public bool TryFinishEnding(string id, bool playerAtExit, bool linAtExit)
+        {
+            if (IsTerminal || !playerAtExit || (id != "ordinary_departure" && id != "respected_stay" && id != "together")) return false;
+            if (id == "together" && (!CanAgreeEscape || !EscapeAgreed || !linAtExit)) return false;
+            // The player can choose an ordinary farewell, or leave after respecting Lin's refusal.
+            if (id == "respected_stay" && (EscapeAgreed || !E5Verified)) return false;
+            Ending = id;
+            pauses.Clear();
+            if (Active != null) RecordActionResult(Active, "cancelled", "Visit ended.");
+            Pending = Active = failedReturn = null;
+            activeStage = ActionStage.Idle;
+            Commit("Visit ended: " + id);
+            return true;
+        }
+
+        public bool FinishVisitAtDeadline()
+        {
+            if (IsTerminal || !HasPause(PauseReason.Menu)) return false;
+            // A deliberate time skip is a complete ordinary departure before investigation,
+            // and a missed opportunity after Lin has seen proof. It is never a fake escape.
+            if (verified.Count == 0) return TryFinishEnding("ordinary_departure", true, false);
+            TimedOut = true;
+            ElapsedGameSeconds = DeadlineSeconds;
+            Ending = "timeout";
+            pauses.Clear();
+            Pending = Active = failedReturn = null;
+            activeStage = ActionStage.Idle;
+            Commit("The player let the final visit run to 18:00.");
+            return true;
         }
 
         // Represents a validated C2 decision for the state-panel demo only.
@@ -335,6 +399,7 @@ namespace Before1800.PartB
             ElapsedGameSeconds = Math.Min(DeadlineSeconds, ElapsedGameSeconds + activeRealSeconds * gameSecondsPerRealSecond);
             if (ElapsedGameSeconds < DeadlineSeconds) return;
             TimedOut = true;
+            Ending = "timeout";
             pauses.Clear();
             if (Active != null) RecordActionResult(Active, "cancelled", "Deadline reached.");
             Pending = Active = failedReturn = null;
@@ -345,7 +410,7 @@ namespace Before1800.PartB
         // Local input may explicitly cancel the pending or active movement with stop.
         internal bool TryQueue(string action, string targetId, out string reason)
         {
-            if (TimedOut) return Reject("Time expired.", out reason);
+            if (IsTerminal) return Reject("This visit has ended.", out reason);
             if (action == "stop")
             {
                 if (targetId != null) return Reject("Stop takes no target.", out reason);
@@ -363,7 +428,7 @@ namespace Before1800.PartB
         internal bool TryQueue(Guid expectedRunId, ulong expectedVersion, string action, string targetId, out string reason)
         {
             if (expectedRunId != RunId || expectedVersion != Version) return Reject("Stale run or snapshot.", out reason);
-            if (TimedOut) return Reject("Time expired.", out reason);
+            if (IsTerminal) return Reject("This visit has ended.", out reason);
             if (action == "reply" && targetId == null)
             {
                 reason = "Reply accepted.";
@@ -375,6 +440,12 @@ namespace Before1800.PartB
 
             switch (action)
             {
+                case "agree_escape":
+                    if (targetId != null || !CanAgreeEscape) return Reject("Evidence, route and the three concerns must be resolved first.", out reason);
+                    EscapeAgreed = true;
+                    action = "follow";
+                    targetId = "player";
+                    break;
                 case "follow":
                     if (targetId != "player") return Reject("Follow requires player.", out reason);
                     if (Active != null)
@@ -385,12 +456,12 @@ namespace Before1800.PartB
                     break;
                 case "inspect":
                     string evidence = EvidenceForTarget(targetId);
-                    if (evidence == null) return Reject("Unknown inspection target.", out reason);
-                    if (verified.Contains(evidence)) return Reject(evidence + " already verified.", out reason);
+                    if (evidence == null && !IsStoryTarget(targetId)) return Reject("Unknown inspection target.", out reason);
+                    if (evidence != null && verified.Contains(evidence)) return Reject(evidence + " already verified.", out reason);
                     break;
                 case "withdraw":
                     if (targetId != null) return Reject("Withdraw takes no target.", out reason);
-                    if (WithdrawUsed) return Reject("Withdraw was already used this run.", out reason);
+                    if (EscapeAgreed || WithdrawUsed) return Reject("Withdrawal unavailable after agreement or previous withdrawal.", out reason);
                     WithdrawUsed = true;
                     Cooperation = CooperationMode.Withdrawn;
                     if (Active != null) RecordActionResult(Active, "cancelled", "Replaced by withdrawal.");

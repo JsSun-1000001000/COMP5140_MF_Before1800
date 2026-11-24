@@ -4,3 +4,9 @@ logs/
 __pycache__/
 .pytest_cache/
 *.pyc
+
+# Temporary atomic config writes must never be committed.
+.env-*
+
+# Downloadable local voice weights; keep out of commits.
+voice-models/

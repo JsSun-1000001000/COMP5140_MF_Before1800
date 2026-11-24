@@ -14,11 +14,46 @@ from .schemas import Decision, DecisionRequest, DecisionResponse, strict_json_lo
 from .tracing import TraceRecorder
 
 
+def repair_contract(request: DecisionRequest) -> str:
+    """Use trusted schema/snapshot facts, never reflect untrusted exception messages."""
+    context = request.context
+    return (
+        "Repair the previous response as ONE JSON object with exactly six required keys. "
+        "EXACT TARGET RULES: action=reply => target_id=null ALWAYS, even if the dialogue mentions an object. "
+        "action=follow => target_id=player; inspect => one listed target; withdraw/agree_escape => target_id=null. "
+        "EXACT CONCERN RULES: keep => concern_id=null AND basis_turn_id=null ALWAYS. "
+        "resolved => action=reply AND target_id=null AND concern_id=one currently open eligible C1/C2/C3 "
+        "AND basis_turn_id=" + request.turn_id + ". "
+        "NEVER combine resolved with agree_escape. If this turn resolves C3, output reply/resolved/C3, "
+        "not agree_escape; consent can occur on a later turn when the snapshot has all concerns resolved. "
+        "Only select actions from " + json.dumps(context.allowed_actions) + ". "
+        "Only select targets from " + json.dumps(context.known_targets) + ". "
+        "Current concerns: " + json.dumps(context.concerns.model_dump()) + ". "
+        "Current witnessed facts: " + json.dumps(context.verified_evidence) + "; route_confirmed="
+        + str(context.route_confirmed) + ". C1 needs 3 physical facts including E5; C3 needs the route. "
+        "The original player's words and original turn remain the only basis for resolution. "
+        "This is a repair of that response, not a new player turn."
+    )
+
+
+def witnessed_facts(request: DecisionRequest) -> str:
+    facts={
+        "E1":"林已亲眼看见镜头随她换位而转动。",
+        "E4":"林已亲眼看见电视响应她点播及改口后的节目。",
+        "E5":"林已亲眼看清布景背面的支架和制作标记。",
+    }
+    present=[facts[k] for k in request.context.verified_evidence if k in facts]
+    if not present:return "本轮没有这些实验的亲见记录。不可把玩家的描述当成完成实验。"
+    return "以下是引擎确认已完成的亲见事实，不是玩家自称，不能否认或要求重做："+"".join(present)+"其他尚未完成的前提仍必须遵守。"
+
+
 class CompletionProvider:
     def __init__(self, settings: Settings, client: httpx.AsyncClient, trace: TraceRecorder):
         self.settings = settings
         self.client = client
         self.trace = trace
+        self.live_verified = False
+        self.enable_live_verification = False
         self.system_prompt = (Path(__file__).resolve().parents[1] / "prompts" / "lin_system.txt").read_text(encoding="utf-8")
 
     async def decide(self, request: DecisionRequest) -> DecisionResponse:
@@ -30,7 +65,7 @@ class CompletionProvider:
         self.trace.write("request", **identifiers, trigger=request.trigger, player_input=request.player_input,
                          context=request.context.model_dump(mode="json"))
         messages = [
-            {"role": "system", "content": self.system_prompt},
+            {"role": "system", "content": self.system_prompt + "\n" + witnessed_facts(request)},
             {"role": "user", "content": json.dumps({"turn_id": request.turn_id, "trigger": request.trigger,
                 "player_input": request.player_input, "engine_snapshot": request.context.model_dump(mode="json")}, ensure_ascii=False)},
         ]
@@ -56,16 +91,15 @@ class CompletionProvider:
                             raise ServiceError(502, "invalid_model_output", "The provider failed the decision contract after one repair.", attempts=attempt)
                         messages.extend([
                             {"role": "assistant", "content": raw},
-                            {"role": "user", "content": "Repair the previous response as ONE JSON object with exactly the six required keys. "
-                             "All nullable keys must be present with null. Obey the M1 action/target contract and this snapshot's allowed_actions and known_targets. "
-                             "Use keep/null/null unless the original turn qualifies for C2 and the snapshot allows it. This is a repair, not a new turn. "
-                             "Validation issues: " + json.dumps(reasons)},
+                            {"role": "user", "content": repair_contract(request) + " Validation issues: " + json.dumps(reasons)},
                         ])
                         continue
                     response = DecisionResponse(**identifiers, decision=decision, provider=self.settings.provider,
                         model=self.settings.model, latency_ms=round((time.monotonic() - started) * 1000), attempts=attempt)
                     self.trace.write("accepted", **identifiers, decision=decision.model_dump(mode="json"),
                                      attempts=attempt, latency_ms=response.latency_ms, provider=self.settings.provider, model=self.settings.model)
+                    if self.enable_live_verification and self.settings.provider != "TEST_FIXTURE":
+                        self.live_verified = True
                     return response
         except (TimeoutError, httpx.TimeoutException):
             raise ServiceError(504, "provider_timeout", "The provider exceeded the configured decision timeout.", attempts=attempts) from None
@@ -89,7 +123,7 @@ class CompletionProvider:
             payload["response_format"] = {"type": "json_object"}
         elif self.settings.response_format == "json_schema":
             payload["response_format"] = {"type": "json_schema", "json_schema": {
-                "name": "lin_m1_decision", "strict": True, "schema": Decision.model_json_schema()}}
+                "name": "lin_last_visit_decision", "strict": True, "schema": Decision.model_json_schema()}}
         headers = {"Authorization": "Bearer " + self.settings.api_key.get_secret_value(), "Content-Type": "application/json"}
         async with self.client.stream("POST", self.settings.base_url + "/chat/completions", json=payload, headers=headers) as response:
             if response.status_code in (401, 403):

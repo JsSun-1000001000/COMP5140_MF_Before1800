@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 using UnityEngine.AI;
 
 namespace Before1800.PartB
@@ -22,6 +23,17 @@ namespace Before1800.PartB
         [SerializeField] SetBackStation setBackStation;
         [SerializeField] CameraStation cameraStation;
         [SerializeField] TvStation tvStation;
+
+        readonly Dictionary<string, Transform> storyGoals = new Dictionary<string, Transform>();
+        readonly Dictionary<string, Transform> storyFocus = new Dictionary<string, Transform>();
+        public void RegisterStoryTarget(string id, Transform goal, Transform focus)
+        {
+            if (!SessionState.IsStoryTarget(id) || !goal || !focus) return;
+            storyGoals[id] = goal;
+            storyFocus[id] = focus;
+        }
+        public void RegisterSetBackStation(SetBackStation station) { setBackStation = station; }
+        public bool CanReachPoint(Vector3 point) => initialized && PathTo(point, new NavMeshPath());
 
         ApartmentDoor[] apartmentDoors;
         bool[] checkedDoors;
@@ -69,11 +81,17 @@ namespace Before1800.PartB
         public Material[] LayoutMaterials => layoutMaterials;
         public string FailureCode { get; private set; }
         public float RemainingDistance { get; private set; }
+        public bool YieldingToPlayer { get; private set; }
+        public bool WaitingForClearSight { get; private set; }
+        int replanAttempts;
+        public void ClearSightWait() { WaitingForClearSight=false; }
         public bool ObservationBlockedForTest { get; private set; }
         public bool CanReachObservation => initialized && ObservationAvailable &&
             PathTo(observationPoint.position, new NavMeshPath());
         public bool CanInspect(string targetId)
         {
+            if (targetId != null && storyGoals.TryGetValue(targetId, out var storyGoal))
+                return initialized && storyGoal && PathTo(storyGoal.position, new NavMeshPath());
             if (targetId == SessionState.CameraTarget) return CanReachObservation;
             if (targetId == SessionState.BroadcastTarget)
                 return initialized && Tv && Tv.CanReachObservation() &&
@@ -84,6 +102,8 @@ namespace Before1800.PartB
 
         public bool AtObservation(string targetId)
         {
+            if (targetId != null && storyGoals.TryGetValue(targetId, out var storyGoal))
+                return initialized && storyGoal && Vector3.Distance(Lin.position, storyGoal.position) < .7f;
             if (targetId == SessionState.CameraTarget) return IsAtObservation;
             if (targetId == SessionState.BroadcastTarget) return initialized && Tv && Tv.AtObservation(Lin);
             return initialized && targetId == SessionState.SetBackTarget && Station && Station.AtObservation(Lin);
@@ -275,7 +295,7 @@ namespace Before1800.PartB
             waitingForPlayer = false;
             followWaitDoor = null;
             progress = stageTime = stuckTime = RemainingDistance = 0f;
-            FailureCode = "";
+            FailureCode = ""; YieldingToPlayer=WaitingForClearSight=false;replanAttempts=0;
         }
 
         public void StepPlayer(Vector2 move, Vector2 look, float dt)
@@ -321,12 +341,17 @@ namespace Before1800.PartB
                 goal = Station.ObservationPoint;
                 focus = Station.SetMark;
             }
+            else if (targetId != null && storyGoals.TryGetValue(targetId, out goal) && storyFocus.TryGetValue(targetId, out focus)) { }
             else
                 return Fail("RC_NAV_NO_PATH");
             var result = Travel(goal.position, ArrivalRadius, dt);
             if (result != TravelResult.Arrived) return result;
             if (!Face(focus.position, dt)) return TravelResult.Moving;
-            return AtObservation(targetId) ? TravelResult.Arrived : Fail("RC_OBSERVATION_BLOCKED");
+            WaitingForClearSight=!AtObservation(targetId);
+            if(!WaitingForClearSight)return TravelResult.Arrived;
+            // A friend crossing the sight line is not a failed task. Keep the intent
+            // and wait for an actual clear view before any evidence can be written.
+            return usesSceneBindings ? TravelResult.Moving : Fail("RC_OBSERVATION_BLOCKED");
         }
 
         // During the live E1 experiment Lin walks from mark A to mark B.
@@ -346,7 +371,13 @@ namespace Before1800.PartB
         {
             bool waitAtBoundary = !passageAllowed && Station && Station.InRestrictedArea(Player.position);
             Vector3 goal = waitAtBoundary ? Station.ObservationPoint.position : Player.position;
-            var result = Travel(goal, waitAtBoundary ? ArrivalRadius : 1.4f, dt, !passageAllowed);
+            // After her decision, join the player at the threshold. Ordinary trailing
+            // distance can leave Lin outside the departure area even beside the player.
+            bool joinAtExit = passageAllowed && usesSceneBindings &&
+                storyGoals.TryGetValue("exit_door", out var departure) && departure &&
+                Vector3.Distance(Player.position, departure.position) <= 1.65f;
+            if (joinAtExit) goal = storyGoals["exit_door"].position;
+            var result = Travel(goal, waitAtBoundary ? ArrivalRadius : joinAtExit ? .65f : 1.4f, dt, !passageAllowed);
             if (result == TravelResult.Arrived) Face(Player.position, dt);
             return result;
         }
@@ -416,6 +447,10 @@ namespace Before1800.PartB
                 nextCorner++;
             var waypoint = nextCorner < corners.Length ? corners[nextCorner] : plannedGoal;
             var delta = Flat(waypoint - Lin.position);
+            var toPlayer=Flat(Player.position-Lin.position);
+            YieldingToPlayer=usesSceneBindings && toPlayer.magnitude<player.radius+lin.radius+.32f &&
+                Vector3.Dot(toPlayer.normalized,delta.normalized)>.15f;
+            if(YieldingToPlayer) { walkingSpeed=0;stuckTime=0;return TravelResult.Moving; }
             Face(waypoint, dt);
             float speed = TravelSpeed;
             if (usesSceneBindings)
@@ -447,6 +482,8 @@ namespace Before1800.PartB
             stageTime += dt;
             stuckTime += dt;
             if (progress >= .1f) { progress = stuckTime = 0f; }
+            if(usesSceneBindings && stuckTime>=1.2f && replanAttempts<2)
+            {corners=null;stuckTime=progress=0;replanAttempts++;return TravelResult.Moving;}
             if (stuckTime >= 3f) return Fail("RC_NAV_NO_PROGRESS");
             if (stageTime >= 20f) return Fail("RC_NAV_TIMEOUT");
             return TravelResult.Moving;
@@ -503,6 +540,11 @@ namespace Before1800.PartB
         }
 
         bool IsCameraCollider(Transform item) => item == cameraTarget || item.IsChildOf(cameraTarget);
+
+        internal void FaceConversationPartner(float dt)
+        {
+            if (initialized && Player && Lin) Face(Player.position, Mathf.Max(0f, dt));
+        }
 
         bool Face(Vector3 point, float dt)
         {

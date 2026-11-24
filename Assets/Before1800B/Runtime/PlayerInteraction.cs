@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Before1800.PartB
 {
-    public enum PlayerScreen { Intro, Explore, Talk, Journal, Menu, Error, Timeout, Wait }
+    public enum PlayerScreen { Intro, Explore, Talk, Journal, Menu, Error, Timeout, Wait, Reading, Ending }
 
     public sealed class PlayerChoice
     {
@@ -18,14 +18,14 @@ namespace Before1800.PartB
     public sealed class PlayerInteraction
     {
         private enum Topic { Opening, Camera, Tv, Honesty, Company, Door, Reply, Clock, ClockAnswerReceipt, ClockLater }
-        private enum Focus { None, Lin, Camera, TrackCamera, Tv, OpenDoor, InspectDoor, Route, ApartmentDoor, Remote, KitchenClock, RetakeCard }
+        private enum Focus { None, Lin, Camera, TrackCamera, Tv, OpenDoor, InspectDoor, Route, ApartmentDoor, Remote, KitchenClock, RetakeCard, Story, Memory }
 
         private readonly PartBScene scene;
         private readonly List<PlayerChoice> choices = new List<PlayerChoice>(5);
         private Topic topic, lastChoicesTopic;
         private PlayerScreen lastChoicesScreen;
         private ulong lastChoicesVersion;
-        private bool choicesDirty = true, restartConfirm, lastChoicesStation, framing;
+        private bool choicesDirty = true, restartConfirm, finishConfirm, lastChoicesStation, framing;
         private Guid runId;
         private ModelRequest pendingReply;
         private float requestStarted;
@@ -39,6 +39,16 @@ namespace Before1800.PartB
         private bool sawE4Verified;
         private SessionState State => scene.State;
         private GreyboxWorld World => scene.World;
+        private LastVisitStory Story => scene.Story;
+        private PartCDialogue Model => scene.GetComponent<PartCDialogue>();
+        public string ModalTitle => Screen == PlayerScreen.Ending ? Story?.EndingTitle : Screen == PlayerScreen.Reading ? Story?.ReadableTitle : "";
+        public void NavigationNotice(string message) { Flash(message,6f); }
+        public void ShowServiceError(string message) { prompt = "暂时没有收到回复。你的话还在，可以重试或先走走。"; choicesDirty = true; }
+        public void AcceptProactiveReply(string text)
+        {
+            acceptedReply = text; topic = Topic.Reply; choicesDirty = true;
+            framing = scene.DialogueOpen;
+        }
 
         public PlayerInteraction(PartBScene scene)
         {
@@ -70,7 +80,10 @@ namespace Before1800.PartB
         public bool FramingConversation => framing && scene.DialogueOpen && !DebugOpen;
         public string Draft { get; set; } = "";
         public bool HasDialogueService => scene.HasDialogueService;
-        public bool CanSend => Screen == PlayerScreen.Talk && !DebugOpen && State.Pending == null;
+        public bool Waiting => scene.ModelWait;
+        public float WaitingSeconds => Time.unscaledTime-requestStarted;
+        public int IntroStep { get; private set; }
+        public bool CanSend => Screen == PlayerScreen.Talk && !Waiting && !DebugOpen && State.Pending == null;
         public string Speaker => "林";
         public string ClockText
         {
@@ -88,12 +101,14 @@ namespace Before1800.PartB
         {
             get
             {
+                if (Story && Story.IsEnding) return PlayerScreen.Ending;
+                if (Story && Story.ReadingOpen) return PlayerScreen.Reading;
                 if (State.TimedOut) return PlayerScreen.Timeout;
                 if (scene.IntroOpen) return PlayerScreen.Intro;
                 if (scene.MenuOpen) return PlayerScreen.Menu;
                 if (scene.JournalOpen) return PlayerScreen.Journal;
                 if (State.HasPause(PauseReason.Error)) return PlayerScreen.Error;
-                if (scene.ModelWait) return PlayerScreen.Wait;
+                // Waiting stays inside the current conversation, preserving the last line.
                 return scene.DialogueOpen ? PlayerScreen.Talk : PlayerScreen.Explore;
             }
         }
@@ -103,7 +118,7 @@ namespace Before1800.PartB
             if (runId != State.RunId)
             {
                 runId = State.RunId;
-                framing = restartConfirm = false;
+                framing = restartConfirm = finishConfirm = false;
                 choicesDirty = true;
                 topic = Topic.Opening;
                 pendingReply = null;
@@ -112,7 +127,7 @@ namespace Before1800.PartB
             }
             if (!scene.DialogueOpen) framing = false;
             if (pendingReply == null) return;
-            if (scene.ModelWait && Time.unscaledTime - requestStarted < 30f) return;
+            if (scene.ModelWait && Time.unscaledTime - requestStarted < 75f) return;
             // The adapter can complete synchronously. Capture after returning from
             // its callback, or discard the ticket when the user leaves the dialogue.
             if (scene.ModelWait) scene.TryCancelModelRequest(pendingReply);
@@ -121,10 +136,11 @@ namespace Before1800.PartB
                 if (pendingReply.PlayerReply != null)
                 {
                     acceptedReply = pendingReply.PlayerReply;
+                    if(Story && Story.LettersCompared)Story.FirstAnswerSent=true;
                     topic = Topic.Reply;
                     Draft = prompt = "";
                 }
-                else prompt = "这句话没能送达，文字已经保留。可以再试一次。";
+                else prompt = "暂时没有收到回复。你的话还在，可以重试或先走走。";
                 choicesDirty = true;
             }
             pendingReply = null;
@@ -143,13 +159,30 @@ namespace Before1800.PartB
                 State.Stage == ActionStage.Arrived && State.Active?.TargetId == SessionState.BroadcastTarget &&
                 (World.CanExamineTv || World.Tv.PlayerCanOperate(World.ViewCamera.transform)))
                 return Focus.Tv;
+            // The foyer's departure prompt must not swallow the nearby wall catch.
+            if (World.Station)
+            {
+                var stationView = World.ViewCamera.transform;
+                float catchAngle = Vector3.Angle(stationView.forward, World.Station.DoorControl.position - stationView.position);
+                if (catchAngle < 22f && World.Station.CanOpenDoor(stationView)) return Focus.OpenDoor;
+                if (catchAngle < 22f && !scene.ObservingSetBack && State.Stage == ActionStage.Arrived &&
+                    State.Active?.TargetId == SessionState.SetBackTarget && World.Station.CanStartObservation(stationView))
+                    return Focus.InspectDoor;
+            }
             var clock = scene.Clock;
             if (clock != null)
             {
-                if (clock.AtRemote) return Focus.Remote;
+                if (clock.AtRemote)
+                {
+                    // Nearby table objects have overlapping aim cones: choose what the player faces most directly.
+                    var view = World.ViewCamera.transform;
+                    float remoteAngle = Vector3.Angle(view.forward, clock.Props.RemoteTarget.position - view.position);
+                    return Story && Story.FocusedPaperAngle < remoteAngle ? Focus.Story : Focus.Remote;
+                }
                 if (clock.AtCard) return Focus.RetakeCard;
                 if (clock.AtClock) return Focus.KitchenClock;
             }
+            if (Story && !string.IsNullOrEmpty(Story.Hint)) return Focus.Story;
             door = World.DoorInView();
             if (door) return Focus.ApartmentDoor;
             if (World.CanExamineCamera) return Focus.Camera;
@@ -165,6 +198,8 @@ namespace Before1800.PartB
                     State.Active?.TargetId == SessionState.SetBackTarget && station.CanStartObservation(view))
                     return Focus.InspectDoor;
             }
+            var daily=scene.GetComponent<ResidenceMemories>();
+            if(daily && !string.IsNullOrEmpty(daily.Hint)) return Focus.Memory;
             return World.CanTalkToLin ? Focus.Lin : Focus.None;
         }
 
@@ -174,6 +209,8 @@ namespace Before1800.PartB
             {
                 switch (CurrentFocus(out var door))
                 {
+                    case Focus.Story: return Story.Hint;
+                    case Focus.Memory: return scene.GetComponent<ResidenceMemories>().Hint;
                     case Focus.Remote: return "拿起茶几上的遥控器";
                     case Focus.KitchenClock: return scene.Clock.ClockHint;
                     case Focus.RetakeCard: return "读电视上的重拍提示";
@@ -202,9 +239,13 @@ namespace Before1800.PartB
         {
             get
             {
-                if (Screen == PlayerScreen.Talk) return prompt;
+                if (Screen == PlayerScreen.Talk && Waiting) return WaitingSeconds>15 ? "林还在斟酌。你可以按 Esc 暂停这句话，原文会保留。" : "林想了想" + new string('·',1+(int)(WaitingSeconds*1.7f)%3);
+                if (Screen == PlayerScreen.Talk) return string.IsNullOrEmpty(prompt) && Model ?
+                    (State.Pending != null ? "林已决定行动。结束交谈后，她会走过去。" : Model.ConnectionStatus) : prompt;
                 if (Screen != PlayerScreen.Explore) return "";
                 if (Time.unscaledTime < transientUntil && transient.Length > 0) return transient;
+                if(World.YieldingToPlayer)return "林在等你让出一点位置。往旁边走一步，她会继续。";
+                if(World.WaitingForClearSight)return "给林留出看清物品的视线，她会继续观察。";
                 var clockNotice = scene.Clock?.Notice;
                 if (!string.IsNullOrEmpty(clockNotice)) return clockNotice;
                 var door = World.DoorInView();
@@ -227,13 +268,17 @@ namespace Before1800.PartB
                     if (World.Tv && World.Tv.CanIntervene)
                         return "预测已命中。按 E，请林改口点另一个节目，看画面是否跟着变。";
                     if (World.Tv && World.Tv.Phase == TvPhase.Failed)
-                        return "本次预测失败，不计 E4。打开对话重新登记后可重试。";
+                        return "这次节目与预测不符。重新选一个节目，再试一次。";
                     return "林到了电视前。先登记预测，再启动序列。";
                 }
                 if (State.Stage == ActionStage.Arrived)
+                {
+                    if (State.Active != null && SessionState.IsStoryTarget(State.Active.TargetId))
+                        return State.Active.TargetId == "exit_door" ? "林到了门边，正在看出口。" : ResidenceMemories.IsTarget(State.Active.TargetId) ? "林走到了那件熟悉的物品旁。" : "林正在亲自阅读，给她一点时间。";
                     return State.Active?.TargetId == SessionState.SetBackTarget
                         ? "林到了维修门边。靠近门旁的控制器，请她一起观察。"
                         : "林到了第一个观察点。对准镜头按 E，开始跟踪验证（会显示锁定进度）。";
+                }
                 if (State.Stage == ActionStage.Returning)
                 {
                     if (State.Active?.TargetId == SessionState.SetBackTarget)
@@ -252,11 +297,24 @@ namespace Before1800.PartB
             {
                 switch (Screen)
                 {
-                    case PlayerScreen.Menu: return restartConfirm ? "从 17:00 重新开始？这一次的手记会清空。" : "";
-                    case PlayerScreen.Wait: return "林正在想怎么回答。";
+                    case PlayerScreen.Reading: return Story?.ReadableText;
+                    case PlayerScreen.Ending: return Story?.EndingText;
+                    case PlayerScreen.Menu: return restartConfirm ? "从 17:00 重新开始？这一次的手记会清空。" :
+                        finishConfirm ? "现在结束拜访，会进入本次结局。还想继续调查的话，请选择回到现场。" : "";
+
                     case PlayerScreen.Error: return State.CanRetryReturn
                         ? "我回去的路被挡住了。给我让一点位置，好吗？" : "我从这里过去不太方便。我们换个位置，再试一次吧。";
                     case PlayerScreen.Timeout: return "指针停在十八点。片场的出口已经关闭。";
+                }
+                if (Model && Model.IsLive && !string.IsNullOrEmpty(acceptedReply)) return acceptedReply;
+                if (Model && Model.IsLive && topic == Topic.Opening && Story)
+                {
+                    if(State.EscapeAgreed) return "走吧。这次，我想自己看看门外。";
+                    if(State.E5Verified) return "我看见墙后的东西了。可出去以后呢？";
+                    if(State.E4Verified) return "镜头和电视都不对劲。我们接着看吧。";
+                    if(State.E1Verified) return "那个镜头真的跟着我转了。你还知道什么？";
+                    if(Story.FirstAnswerSent) return "刚才的话我记着。你还想说什么？";
+                    return "这封信我还没寄。回信怎么就知道蓝杯子的事了？";
                 }
                 if (State.Cooperation == CooperationMode.Withdrawn) return "先停一下吧。我还没准备好接着说。";
                 switch (topic)
@@ -344,12 +402,27 @@ namespace Before1800.PartB
                 choices.Clear();
                 switch (screen)
                 {
+                    case PlayerScreen.Reading:
+                        if (Story.LetterComparison) Add("answer_letters", "回到林面前，回答她");
+                        else if (Story.ReadingExit)
+                        {
+                            if (Story.CanLeaveTogether) Add("depart_together", "和林一起走出去");
+                            Add("depart_alone", "照常告别，独自离开");
+                            if (Story.CanRespectStay) Add("respect_stay", "尊重她暂时留下的决定");
+                        }
+                        else if (Story.CanShareReading) Add("share_reading", "递给林，让她亲自读");
+                        Add("close_reading", "收起，回到现场");
+                        break;
+                    case PlayerScreen.Ending: Add("restart_yes", "重新体验这次拜访"); break;
                     case PlayerScreen.Menu:
                         if (restartConfirm) { Add("resume_menu", "先不重来"); Add("restart_yes", "确认重新开始"); }
+                        else if (finishConfirm) { Add("resume", "回到现场"); Add("finish_visit_yes", "确认结束这次拜访"); }
                         else
                         {
                             Add("resume", "回到现场");
                             if (State.CanRetryReturn) Add("retry_return", "请林再试着回来");
+                            if (Story) Add("finish_visit", "让这次拜访结束");
+                            Add("audio", "声音与语言");
                             Add("restart", "重新开始");
                         }
                         break;
@@ -380,6 +453,27 @@ namespace Before1800.PartB
             {
                 Add("resume_action", "好，你继续。");
                 Add("stop", "等一下，我们先停在这里。");
+                return;
+            }
+            if (Model && Model.IsLive && topic != Topic.Tv)
+            {
+                if(State.E5Verified && State.RouteConfirmed)
+                {
+                    if(!State.IsConcernResolved("C1"))Add("say_evidence","把刚才看到的事连起来。");
+                    if(!State.IsConcernResolved("C2"))Add("say_truth","我愿意说清那些回信。");
+                    if(!State.IsConcernResolved("C3"))Add("say_future","说说出去后的第一步。");
+                    if(choices.Count==0)Add(State.EscapeAgreed?"say_exit":"say_choice",State.EscapeAgreed?"我们现在走吧。":"现在走，还是留下？");
+                    return;
+                }
+                if(Story && !Story.LettersCompared) Add("compare_letters", "先看看两封信");
+                else if(!State.IsConcernResolved("C2")) Add("say_truth", "回信，其实是我写的。");
+                else Add("say_life", "我想听听你的往事。");
+                if (!State.E1Verified) Add("say_camera", "一起看看那个镜头？");
+                else if (!State.E4Verified) Add("tv", "试试电视会不会听你的？");
+                else if (!State.E5Verified) Add("say_set", "去看看门边的墙板？");
+                else Add("say_future", "你现在最担心什么？");
+                if (!State.EscapeAgreed) Add("say_follow", "陪我走走？");
+                else Add("say_exit", "我们现在走吧。");
                 return;
             }
             switch (topic)
@@ -450,7 +544,7 @@ namespace Before1800.PartB
             var tv = World.Tv;
             if (tv && tv.Phase == TvPhase.Running)
             {
-                Add("tv_req_news", "请林点播新闻（例3可故意点错）");
+                Add("tv_req_news", "请林点播新闻");
                 Add("tv_req_cartoon", "请林点播动画片");
                 Add("tv_req_weather", "请林点播天气预报");
                 Add("resume_action", "好，你继续对着电视。");
@@ -464,9 +558,9 @@ namespace Before1800.PartB
             }
             if (tv && (tv.Phase == TvPhase.Idle || tv.Phase == TvPhase.Failed || tv.Phase == TvPhase.Predicted))
             {
-                Add("pred_news", "例1：启动后会播新闻");
-                Add("pred_cartoon", "例2：启动后会播动画片");
-                Add("pred_weather", "例3：启动后会播天气预报");
+                Add("pred_news", "锁定预测：启动后会播新闻");
+                Add("pred_cartoon", "锁定预测：启动后会播动画片");
+                Add("pred_weather", "锁定预测：启动后会播天气预报");
             }
             if (tv && tv.HasPrediction && !State.E4Verified) Add("go_tv", "一起去客厅电视前验证");
             Add("again", "我还想说件事。");
@@ -475,14 +569,23 @@ namespace Before1800.PartB
         public void Begin()
         {
             if (Screen != PlayerScreen.Intro || DebugOpen) return;
+            if(IntroStep<3){IntroStep++;return;}
             scene.ToggleIntroOff();
             if (!World.CanTalkToLin) Flash("走近林，面向她说话。");
         }
 
+        void OpenGuidedTalk()
+        {
+            if(!scene.DialogueOpen)scene.ToggleDialogue();
+            framing=true;topic=Topic.Opening;acceptedReply="";prompt="";choicesDirty=true;
+        }
         public void Use()
         {
+            scene.GetComponent<ResidenceAudio>()?.PlayCue("interact");
             switch (CurrentFocus(out var door))
             {
+                case Focus.Story: Story.TryInteract(); break;
+                case Focus.Memory: if(!scene.GetComponent<ResidenceMemories>().TalkAbout()) Flash("请林走近一点，再一起聊这件东西。"); else framing=true; break;
                 case Focus.Remote: scene.Clock.TakeRemote(); break;
                 case Focus.KitchenClock: scene.Clock.UseClock(); break;
                 case Focus.RetakeCard: scene.Clock.ReadCard(); break;
@@ -496,7 +599,8 @@ namespace Before1800.PartB
                     prompt = "";
                     break;
                 case Focus.Camera:
-                    if (State.CameraDiscovered) ToggleJournal();
+                    if(Model && Model.IsLive) { State.Discover(SessionState.CameraTarget); OpenGuidedTalk(); Send(GameLanguage.T("我们看看这个镜头会不会跟着你转，好吗？")); }
+                    else if (State.CameraDiscovered) ToggleJournal();
                     else
                     {
                         State.Discover(SessionState.CameraTarget);
@@ -519,6 +623,7 @@ namespace Before1800.PartB
                         scene.InteractWithBroadcast();
                         if (!string.IsNullOrEmpty(scene.Feedback)) Flash(scene.Feedback, 4.5f);
                     }
+                    else if(Model && Model.IsLive) { State.Discover(SessionState.BroadcastTarget); OpenGuidedTalk(); topic=Topic.Tv; }
                     else if (State.TvDiscovered) ToggleJournal();
                     else
                     {
@@ -545,12 +650,13 @@ namespace Before1800.PartB
             if (DebugOpen) return;
             switch (Screen)
             {
+                case PlayerScreen.Reading: Story.DismissReading(); break;
                 case PlayerScreen.Journal: ToggleJournal(); break;
                 case PlayerScreen.Menu:
-                    if (restartConfirm) { restartConfirm = false; choicesDirty = true; }
+                    if (restartConfirm || finishConfirm) { restartConfirm = finishConfirm = false; choicesDirty = true; }
                     else ToggleMenu();
                     break;
-                case PlayerScreen.Talk: CloseTalk(); break;
+                case PlayerScreen.Talk: if(Waiting) CancelWait(); else CloseTalk(); break;
                 case PlayerScreen.Wait: CancelWait(); break;
                 case PlayerScreen.Error: scene.RecoverNavigation(); break;
                 case PlayerScreen.Explore: ToggleMenu(); break;
@@ -566,20 +672,45 @@ namespace Before1800.PartB
         public void ToggleMenu()
         {
             if (DebugOpen || (Screen != PlayerScreen.Explore && Screen != PlayerScreen.Menu)) return;
-            restartConfirm = false;
+            restartConfirm = finishConfirm = false;
             choicesDirty = true;
             scene.ToggleMenu();
         }
 
         public void Choose(string id)
         {
+            if(Waiting) return;
             if (DebugOpen || string.IsNullOrEmpty(id)) return;
             bool displayed = false;
             foreach (var choice in Choices) if (choice.Id == id) { displayed = true; break; }
             if (!displayed) return;
             prompt = "";
+            if (id.StartsWith("say_", StringComparison.Ordinal))
+            {
+                string text = id == "say_letters" ? "我想和你一起核对原信和回信。你想先看哪封？" :
+                    id == "say_evidence" ? "镜头跟着你转，电视跟着你的选择变，墙后还有布景支架。这些放在一起，说明有人一直在安排这里。我知道这里是片场，你可以按亲眼看到的来判断。" :
+                    id == "say_choice" ? "我想和你一起离开，但决定权在你。你现在愿意跟我走吗？不愿意的话，我也会听你说。" :
+                    id == "say_truth" ? "那些回信是我代写的。我偷看过你的信，却一直瞒着你。我怕失去这份工作，也怕失去你这个朋友；这些都不是借口。现在我愿意把知道的事告诉你，让你自己决定。" :
+                    id == "say_camera" ? "你愿意到电视上方的镜头前，自己验证它是否在跟踪你吗？" :
+                    id == "say_set" ? "维修面板后面有搭建的痕迹。请你亲自去看，我不想只靠说服。" :
+                    id == "say_life" ? "这间屋子里，你最舍不得哪件普通的东西？我想听听你和它的故事。" :
+                    id == "say_future" ? "我不知道能不能找到他们。出去后，我愿意先陪你找一个能落脚的地方，再一起联系他们；任何时候你都可以重新决定。我不会替你选。你还担心哪一步？" :
+                    id == "say_exit" ? "我尊重你的决定。你如果愿意，我们一起到出口，走出这间屋子。" : "你愿意跟我一起走走吗？下一步想查什么，由你决定。";
+                Send(GameLanguage.T(text)); return;
+            }
             switch (id)
             {
+                case "compare_letters": Story.OpenLetterComparison(); return;
+                case "answer_letters":
+                    Story.DismissReading(); OpenGuidedTalk(); return;
+                case "close_reading": Story.DismissReading(); return;
+                case "share_reading": Story.ShareCurrentDocument(); return;
+                case "depart_alone": Story.ChooseDeparture(false); return;
+                case "depart_together": Story.ChooseDeparture(true); return;
+                case "respect_stay": Story.ChooseStay(); return;
+                case "finish_visit": finishConfirm = true; choicesDirty = true; return;
+                case "finish_visit_yes": finishConfirm = false; Story.FastForwardVisit(); return;
+                case "audio": scene.GetComponent<PlayerUIView>().OpenSettings(); return;
                 case "resume": ToggleMenu(); return;
                 case "resume_menu": restartConfirm = false; choicesDirty = true; return;
                 case "restart": restartConfirm = true; choicesDirty = true; return;
@@ -622,7 +753,12 @@ namespace Before1800.PartB
                     Flash("林跟着你去厨房。站到钟前，给她留出看表盘的视线。");
                     return;
                 case "go_camera": StartAction("inspect", SessionState.CameraTarget); return;
-                case "go_tv": StartAction("inspect", SessionState.BroadcastTarget); return;
+                case "go_tv":
+                    if (Model && Model.IsLive)
+                        Send(GameLanguage.Code == "en" ? "I predict the " + GameLanguage.T(TvStation.LabelFor(World.Tv.PredictedProgram)) + ". Come to the television and test it with me."
+                            : "我登记的预测是" + TvStation.LabelFor(World.Tv.PredictedProgram) + "。请你去电视前一起验证。" );
+                    else StartAction("inspect", SessionState.BroadcastTarget);
+                    return;
                 case "go_door": StartAction("inspect", SessionState.SetBackTarget); return;
                 case "follow": StartAction("follow", "player"); return;
                 case "stop": StartAction("stop", null); return;

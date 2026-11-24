@@ -16,8 +16,9 @@ namespace Before1800.PartB
         [Serializable] private sealed class Entry { public string role, content; }
         [Serializable] private sealed class Context
         {
-            public bool allow_trust_resolution, escape_agreed, route_confirmed;
-            public string cooperation_mode, game_time;
+            public bool allow_trust_resolution, escape_agreed, route_confirmed, withdraw_used;
+            public string[] narrative_observations, relationship_memory, lin_private_knowledge;
+            public string cooperation_mode, game_time, output_language;
             public string[] known_targets, allowed_actions, observations, player_discovered, verified_evidence;
             public ConcernSnapshot concerns;
             public Entry[] recent_dialogue;
@@ -40,7 +41,15 @@ namespace Before1800.PartB
         private readonly List<Entry> history = new List<Entry>();
         private PartBScene scene;
         private Guid currentRun;
-        private bool live, panel;
+        private bool live, panel, ready, proactiveRequest;
+        private string proactiveObservation;
+        private readonly List<string> memories = new List<string>();
+        private string serviceLabel = "正在连接对话服务";
+        private float nextHealth;
+        public bool IsLive => live;
+        public bool Ready => ready;
+        public string ConnectionStatus => serviceLabel;
+        [Serializable] private sealed class Health { public bool ready; public string model, provider; }
         private string sent = "", received = "", status = "";
         private Vector2 scroll;
         private GUIStyle textStyle;
@@ -64,6 +73,27 @@ namespace Before1800.PartB
             }
         }
 
+        private void Start()
+        {
+            SetLive(true);
+            StartCoroutine(CheckHealth());
+        }
+
+        private IEnumerator CheckHealth()
+        {
+            nextHealth = Time.unscaledTime + 15f;
+            using (var http = UnityWebRequest.Get(gateway.Replace("/npc/", "/health")))
+            {
+                http.timeout = 4;
+                yield return http.SendWebRequest();
+                Health health = null;
+                if (http.result == UnityWebRequest.Result.Success)
+                    try { health = JsonUtility.FromJson<Health>(http.downloadHandler.text); } catch (ArgumentException) { }
+                ready = health != null && health.ready;
+                serviceLabel = ready ? "" : "暂时联系不上，请稍后再说。你的话会保留。";
+            }
+        }
+
         public void SetLive(bool value)
         {
             if (live == value || scene.ModelWait) return;
@@ -74,8 +104,22 @@ namespace Before1800.PartB
 
         private void Update()
         {
-            if (InputKey(KeyCode.F2)) SetLive(!live);
-            if (InputKey(KeyCode.F3)) panel = !panel;
+            if (Application.isEditor && InputKey(KeyCode.F2)) SetLive(!live);
+            if (Application.isEditor && InputKey(KeyCode.F3)) panel = !panel;
+            if (!scene.ModelWait && Time.unscaledTime >= nextHealth) StartCoroutine(CheckHealth());
+            if (live && ready && scene.Story && !scene.State.IsPaused && !scene.State.IsTerminal &&
+                scene.State.Pending == null && scene.State.Active == null)
+            {
+                var observation = scene.Story.ConsumeProactiveObservation() ?? GetComponent<ResidenceMemories>()?.Consume();
+                if (!string.IsNullOrEmpty(observation))
+                {
+                    scene.ToggleDialogue();
+                    proactiveRequest = true;
+                    proactiveObservation = observation;
+                    scene.TrySendPlayerLine("（现场观察触发）", out _);
+                    proactiveRequest = false;
+                }
+            }
         }
 
         private static bool InputKey(KeyCode key) => UnityEngine.Input.GetKeyDown(key);
@@ -96,6 +140,7 @@ namespace Before1800.PartB
             if (currentRun != ticket.RunId)
             {
                 history.Clear();
+                memories.Clear();
                 currentRun = ticket.RunId;
             }
             var s = ticket.Snapshot;
@@ -103,16 +148,27 @@ namespace Before1800.PartB
             var actions = new List<string> { "reply" };
             bool canMove = scene.State.Pending == null && scene.State.Cooperation != CooperationMode.Withdrawn
                 && (scene.State.Active == null || scene.State.Active.Action == "follow");
-            if (canMove)
+            if (canMove && !scene.State.EscapeAgreed)
             {
                 actions.Add("follow");
                 if (!scene.State.E1Verified && scene.World.CanInspect(SessionState.CameraTarget)) targets.Add(SessionState.CameraTarget);
                 if (!scene.State.E4Verified && scene.World.CanInspect(SessionState.BroadcastTarget)) targets.Add(SessionState.BroadcastTarget);
                 if (!scene.State.E5Verified && scene.World.CanInspect(SessionState.SetBackTarget)) targets.Add(SessionState.SetBackTarget);
+                if (scene.Story)
+                    foreach (var target in scene.Story.KnownStoryTargets)
+                        if (!targets.Contains(target) && scene.Story.CanVisit(target)) targets.Add(target);
+                var everyday = GetComponent<ResidenceMemories>();
+                if (everyday) foreach(var place in everyday.Places) if(scene.World.CanInspect(place.Id)) targets.Add(place.Id);
                 if (targets.Count > 1) actions.Add("inspect");
+                if (!scene.State.WithdrawUsed && !scene.State.EscapeAgreed) actions.Add("withdraw");
+                if (scene.State.CanAgreeEscape) actions.Add("agree_escape");
             }
 
+            if (canMove && scene.State.EscapeAgreed) actions.Add("follow");
             var observations = new List<string> { "当前动作阶段：" + s.action_stage };
+            if(scene.State.E1Verified) observations.Add("已完成且不撤销的亲见：你换位时亲眼看见镜头外壳转向自己。不要再说你没看过摄像头。");
+            if(scene.State.E4Verified) observations.Add("已完成且不撤销的亲见：你点播节目命中，再改口，电视也跟着变。不要再要求重做电视实验。");
+            if(scene.State.E5Verified) observations.Add("已完成且不撤销的亲见：你亲眼看清墙后的布景支架和制作标记。不要再说还没有见过布景。");
             var clock = s.clock_rehearsal;
             if (clock != null && clock.invited_to_watch)
                 observations.Add("朋友邀请你去厨房看钟。");
@@ -124,26 +180,34 @@ namespace Before1800.PartB
                 else if (clock.answer_about_remote == "evaded")
                     observations.Add("你问过朋友怎么知道按键，对方岔开了话题，没有回答。");
             }
-            if (scene.World.Tv)
+            if (scene.World.Tv && (scene.World.Tv.HasPrediction || Vector3.Distance(scene.World.Lin.position, scene.World.Tv.transform.position) < 4f || scene.State.E4Verified))
             {
                 var tv = scene.World.Tv;
                 observations.Add(tv.HasPrediction
-                    ? "电视预测已锁定：" + tv.PredictedEventId + "；阶段=" + tv.Phase
+                    ? "朋友当面登记的电视预测已锁定：" + TvStation.LabelFor(tv.PredictedProgram) + "（" + tv.PredictedEventId + "）；阶段=" + tv.Phase + "。你已经听见预测内容，不要重复问预测是什么；尚未完成的实验仍需到电视前亲自验证。"
                     : "客厅电视可做 E4 预测实验；尚未锁定预测。");
                 if (tv.DisplayedProgram != TvProgram.None)
                     observations.Add("电视当前画面：" + TvStation.LabelFor(tv.DisplayedProgram));
             }
             if (scene.World.Station)
                 observations.Add(scene.World.Station.DoorOpen ? "维修门已打开；门开本身不能证明路线或布景。" : "现场维修门关闭。");
+            if (proactiveRequest && !string.IsNullOrEmpty(proactiveObservation)) observations.Add(proactiveObservation);
+            observations.Add("林与朋友距离：" + Vector3.Distance(scene.World.Lin.position, scene.World.Player.position).ToString("F1") + "米。只有共同验证的事实才算林亲见，玩家自称完成不算。");
+            var privateKnowledge = new List<string>(scene.Story ? scene.Story.LinPrivateKnowledge : new string[0]);
+            var daily = GetComponent<ResidenceMemories>();
+            if(daily) { privateKnowledge.AddRange(daily.Knowledge); if(!string.IsNullOrEmpty(daily.Observation)) observations.Add(daily.Observation); }
             var input = new Input {
                 session_id = s.run_id, request_id = ticket.RequestId.ToString("N"), turn_id = ticket.RequestId.ToString("N"),
-                state_version = s.state_version, player_input = line,
+                state_version = s.state_version, player_input = proactiveRequest ? "" : line, trigger = proactiveRequest ? "proactive" : "user",
                 context = new Context {
-                    known_targets = targets.ToArray(), allowed_actions = actions.ToArray(), observations = observations.ToArray(),
+                    output_language = GameLanguage.Code, known_targets = targets.ToArray(), allowed_actions = actions.ToArray(), observations = observations.ToArray(),
                     verified_evidence = s.verified_evidence, player_discovered = s.player_discoveries, concerns = s.concerns,
                     route_confirmed = s.route_confirmed, escape_agreed = s.escape_agreed, cooperation_mode = s.cooperation_mode,
                     game_time = s.time_hms, last_action_result = s.last_action_result, recent_dialogue = history.ToArray(),
-                    allow_trust_resolution = s.concerns.C2 == "open"
+                    allow_trust_resolution = s.concerns.C2 == "open", withdraw_used = scene.State.WithdrawUsed,
+                    narrative_observations = scene.Story ? scene.Story.StoryObservations : new string[0],
+                    lin_private_knowledge = privateKnowledge.ToArray(),
+                    relationship_memory = memories.ToArray()
                 }
             };
             using (var buffer = new MemoryStream())
@@ -152,7 +216,7 @@ namespace Before1800.PartB
                 sent = Encoding.UTF8.GetString(buffer.ToArray());
             }
             received = "";
-            status = "正在等待 DeepSeek";
+            status = "林正在考虑你的话…";
             return Decide(ticket, input, sent);
         }
 
@@ -160,7 +224,7 @@ namespace Before1800.PartB
         {
             var http = new UnityWebRequest(gateway + endpoint, "POST") {
                 uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json)),
-                downloadHandler = new DownloadHandlerBuffer(), timeout = 26, redirectLimit = 0
+                downloadHandler = new DownloadHandlerBuffer(), timeout = 70, redirectLimit = 0
             };
             http.SetRequestHeader("Content-Type", "application/json");
             return http;
@@ -183,6 +247,8 @@ namespace Before1800.PartB
                 received = http.downloadHandler.text;
                 if (http.result != UnityWebRequest.Result.Success)
                 {
+                    ready = false;
+                    serviceLabel = "连接暂时中断 · 文字已保留，可重试";
                     Reject(ticket, "网关 " + http.responseCode + " " + http.error);
                     yield break;
                 }
@@ -198,11 +264,12 @@ namespace Before1800.PartB
                     yield break;
                 }
                 string target = string.IsNullOrEmpty(d.target_id) ? null : d.target_id;
-                bool resolve = d.concern_status == "resolved" && d.concern_id == "C2" && d.basis_turn_id == input.turn_id
-                    && d.action == "reply" && input.context.allow_trust_resolution;
+                bool resolve = d.concern_status == "resolved" && d.basis_turn_id == input.turn_id
+                    && d.action == "reply" && input.trigger == "user" && scene.State.CanResolveConcern(d.concern_id);
                 bool keep = d.concern_status == "keep" && string.IsNullOrEmpty(d.concern_id) && string.IsNullOrEmpty(d.basis_turn_id);
                 if ((!keep && !resolve) || Array.IndexOf(input.context.allowed_actions, d.action) < 0
-                    || (target != null && Array.IndexOf(input.context.known_targets, target) < 0))
+                    || (target != null && Array.IndexOf(input.context.known_targets, target) < 0)
+                    || (input.trigger == "proactive" && d.action != "reply" && d.action != "inspect"))
                 {
                     Reject(ticket, "动作或顾虑提议超出本轮范围");
                     yield break;
@@ -212,11 +279,20 @@ namespace Before1800.PartB
                     Reject(ticket, reason);
                     yield break;
                 }
-                if (resolve) scene.State.ResolveTrustFromAcceptedTurn(input.turn_id);
-                history.Add(new Entry { role = "user", content = input.player_input });
+                if (resolve) scene.State.TryResolveConcernFromAcceptedTurn(d.concern_id, input.turn_id, input.player_input);
+                if (input.trigger == "user") history.Add(new Entry { role = "user", content = input.player_input });
                 history.Add(new Entry { role = "assistant", content = d.dialogue });
-                if (history.Count > 8) history.RemoveRange(0, 2);
-                status = answer.model + " 已接受 " + d.action + " " + target + (resolve ? " · C2 已解决" : "");
+                if (history.Count > 36) history.RemoveRange(0, history.Count - 36);
+                if (input.trigger == "user")
+                {
+                    memories.Add("朋友曾原话说：" + input.player_input.Substring(0, Math.Min(500, input.player_input.Length)));
+                    memories.Add("你当时原话回答：" + d.dialogue.Substring(0, Math.Min(500, d.dialogue.Length)));
+                    // Preserve the inciting exchange and the most recent exchanges verbatim, without invented summaries.
+                    while (memories.Count > 24) memories.RemoveAt(6);
+                }
+                if (input.trigger == "proactive") scene.GetComponent<GreyboxHUD>().Flow.AcceptProactiveReply(d.dialogue);
+                GetComponent<ResidenceAudio>()?.PlayCue("dialogue");
+                status = answer.model + " 已接受 " + d.action + " " + target + (resolve ? " · " + d.concern_id + " 已回应" : "");
                 Debug.Log("[Part C] " + input.request_id + " " + status);
             }
         }
@@ -225,16 +301,18 @@ namespace Before1800.PartB
         {
             scene.TryCancelModelRequest(request);
             status = "未执行：" + reason;
+            if (scene.DialogueOpen) scene.GetComponent<GreyboxHUD>()?.Flow?.ShowServiceError(status);
             Debug.LogWarning("[Part C] " + status);
         }
 
         private void OnGUI()
         {
+            if(!Application.isEditor || !panel) return;
             if (textStyle == null)
                 textStyle = new GUIStyle(GUI.skin.label) { font = PlayerUIFont.Get(), fontSize = 14, wordWrap = true, richText = false };
             float width = Mathf.Min(Screen.width - 20, panel ? 570 : 310);
             GUILayout.BeginArea(new Rect(Screen.width - width - 10, 6, width, panel ? Screen.height * .74f : 32), GUI.skin.box);
-            GUILayout.Label(live ? "DeepSeek 已启用   F2 切换 · F3 请求记录" : "本地话题   F2 启用 DeepSeek · F3 请求记录", textStyle);
+            GUILayout.Label(live ? serviceLabel : "离线探索 · F2 连接对话", textStyle);
             if (panel)
             {
                 scroll = GUILayout.BeginScrollView(scroll);

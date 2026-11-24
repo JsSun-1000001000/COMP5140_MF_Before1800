@@ -4,7 +4,8 @@ from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from .speech import SpeechRequest, synthesize
 from pydantic import ValidationError
 
 from .config import Settings
@@ -85,6 +86,7 @@ def create_app(settings: Settings | None = None, *, provider_transport: httpx.As
         async with httpx.AsyncClient(transport=provider_transport, timeout=httpx.Timeout(configuration.timeout_seconds),
                 follow_redirects=False, trust_env=False) as client:
             provider = CompletionProvider(configuration, client, trace)
+            provider.enable_live_verification = provider_transport is None
             app.state.coordinator = Coordinator(provider, configuration)
             try:
                 yield
@@ -106,7 +108,8 @@ def create_app(settings: Settings | None = None, *, provider_transport: httpx.As
         return JSONResponse({"status": "not_configured" if missing else "ready", "ready": not missing,
             "provider": configuration.provider, "model": configuration.model,
             "api_key_configured": "LLM_API_KEY" not in missing, "missing_config": missing,
-            "live_verified": False, "mock_mode": configuration.provider == "TEST_FIXTURE"}, status_code=503 if missing else 200)
+            "live_verified": bool(getattr(getattr(getattr(app.state, "coordinator", None), "provider", None), "live_verified", False)),
+            "mock_mode": configuration.provider == "TEST_FIXTURE"}, status_code=503 if missing else 200)
 
     @app.post("/npc/decide", response_model=DecisionResponse,
               openapi_extra={"requestBody": {"required": True, "content": {"application/json": {"schema": inline_schema(DecisionRequest)}}}})
@@ -123,6 +126,11 @@ def create_app(settings: Settings | None = None, *, provider_transport: httpx.As
         body = await parse_model(request, CancelRequest)
         status = await request.app.state.coordinator.cancel(body.session_id, body.request_id)
         return {"session_id": body.session_id, "request_id": body.request_id, "status": status}
+
+    @app.post("/speech")
+    async def speech(request: Request):
+        body = await parse_model(request, SpeechRequest)
+        return Response(await synthesize(body), media_type="audio/wav", headers={"Cache-Control": "no-store"})
 
     return app
 

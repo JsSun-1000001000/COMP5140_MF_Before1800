@@ -1,0 +1,1920 @@
+{
+  "entries": [
+    {
+      "zh": "暂时没有收到回复。你的话还在，可以重试或先走走。",
+      "en": "No reply came through. Your words are saved; try again or take a walk."
+    },
+    {
+      "zh": "手记已更新：林亲眼确认镜头会跟随她。按 J 查看。",
+      "en": "Notebook updated: Lin saw the camera follow her. Press J to read."
+    },
+    {
+      "zh": "手记已更新：林确认电视会按她想看的节目切换。按 J 查看。",
+      "en": "Notebook updated: Lin saw the TV follow her choice of programme. Press J to read."
+    },
+    {
+      "zh": "林",
+      "en": "Lin"
+    },
+    {
+      "zh": "拿起茶几上的遥控器",
+      "en": "Pick up the remote on the coffee table"
+    },
+    {
+      "zh": "读电视上的重拍提示",
+      "en": "Read the retake card on the TV"
+    },
+    {
+      "zh": "关门",
+      "en": "Close the door"
+    },
+    {
+      "zh": "开门",
+      "en": "Open the door"
+    },
+    {
+      "zh": "重新和林说话",
+      "en": "Talk to Lin again"
+    },
+    {
+      "zh": "和林说话",
+      "en": "Talk to Lin"
+    },
+    {
+      "zh": "查看镜头记录",
+      "en": "Read the camera notes"
+    },
+    {
+      "zh": "查看镜头",
+      "en": "Examine the camera"
+    },
+    {
+      "zh": "请林换到第二个观察点，看镜头是否跟随",
+      "en": "Ask Lin to move; watch whether the camera follows"
+    },
+    {
+      "zh": "启动电视预测序列",
+      "en": "Start the TV prediction"
+    },
+    {
+      "zh": "请林点播预测的节目",
+      "en": "Ask Lin to request the predicted programme"
+    },
+    {
+      "zh": "请林改口，看画面是否跟着变",
+      "en": "Ask Lin to change her mind; watch the screen"
+    },
+    {
+      "zh": "预测失败，回对话重新登记",
+      "en": "Prediction missed; register another in conversation"
+    },
+    {
+      "zh": "查看电视记录",
+      "en": "Read the TV notes"
+    },
+    {
+      "zh": "查看客厅电视",
+      "en": "Examine the living-room TV"
+    },
+    {
+      "zh": "打开维修门",
+      "en": "Open the maintenance panel"
+    },
+    {
+      "zh": "请林观察门后的布景",
+      "en": "Ask Lin to examine what is behind the wall"
+    },
+    {
+      "zh": "检查通道",
+      "en": "Check the passage"
+    },
+    {
+      "zh": "林还在斟酌。你可以按 Esc 暂停这句话，原文会保留。",
+      "en": "Lin is still considering. Press Esc to pause this exchange; your words will stay."
+    },
+    {
+      "zh": "林想了想",
+      "en": "Lin considers your words"
+    },
+    {
+      "zh": "林已决定行动。结束交谈后，她会走过去。",
+      "en": "Lin is ready to move. Finish the conversation to go with her."
+    },
+    {
+      "zh": "门边有人挡住了，留一点空间。",
+      "en": "Someone is in the doorway. Leave a little space."
+    },
+    {
+      "zh": "林在门的另一边，打开房门她就能跟过来。",
+      "en": "Lin is behind the door. Open it so she can follow."
+    },
+    {
+      "zh": "正在检查通道，保持面向检查牌。",
+      "en": "Checking the passage. Keep facing the sign."
+    },
+    {
+      "zh": "林在辨认支架和标记，给她留出视线。",
+      "en": "Lin is examining the support and markings. Keep her view clear."
+    },
+    {
+      "zh": "跟踪实验进行中：看镜头外壳是否跟着林转。",
+      "en": "Watch whether the camera housing turns to follow Lin."
+    },
+    {
+      "zh": "林在电视前。对准屏幕按 E，启动已锁定的预测序列。",
+      "en": "Lin is by the TV. Aim at the screen and press E to start your prediction."
+    },
+    {
+      "zh": "序列已启动。按 E，请林点播你预测的节目。",
+      "en": "The sequence has started. Press E to ask for the predicted programme."
+    },
+    {
+      "zh": "预测已命中。按 E，请林改口点另一个节目，看画面是否跟着变。",
+      "en": "Prediction matched. Press E to have Lin request something different."
+    },
+    {
+      "zh": "本次预测失败，不计 E4。打开对话重新登记后可重试。",
+      "en": "This prediction missed. Register another in conversation and try again."
+    },
+    {
+      "zh": "林到了电视前。先登记预测，再启动序列。",
+      "en": "Lin has reached the TV. Register a prediction before starting."
+    },
+    {
+      "zh": "林到了门边，正在看出口。",
+      "en": "Lin has reached the door and is looking at the exit."
+    },
+    {
+      "zh": "林走到了那件熟悉的物品旁。",
+      "en": "Lin has reached the familiar object."
+    },
+    {
+      "zh": "林正在亲自阅读，给她一点时间。",
+      "en": "Lin is reading for herself. Give her a moment."
+    },
+    {
+      "zh": "林到了维修门边。靠近门旁的控制器，请她一起观察。",
+      "en": "Lin has reached the panel. Approach the latch and examine it together."
+    },
+    {
+      "zh": "林到了第一个观察点。对准镜头按 E，开始跟踪验证（会显示锁定进度）。",
+      "en": "Lin is at the first position. Aim at the camera and press E to watch it follow."
+    },
+    {
+      "zh": "林看清了布景支架，正在往回走。",
+      "en": "Lin has seen the set support and is walking back."
+    },
+    {
+      "zh": "E4 已确认。电视跟着林想看的节目切换了。按 J 可回看手记。",
+      "en": "Notebook updated. The TV followed Lin's request. Press J to read."
+    },
+    {
+      "zh": "E1 已确认。林亲眼看见镜头跟随，正在往回走。按 J 可回看手记。",
+      "en": "Notebook updated. Lin saw the camera follow her and is walking back. Press J to read."
+    },
+    {
+      "zh": "从 17:00 重新开始？这一次的手记会清空。",
+      "en": "Start again at 17:00? This visit's notes will be cleared."
+    },
+    {
+      "zh": "我回去的路被挡住了。给我让一点位置，好吗？",
+      "en": "My way back is blocked. Could you give me some room?"
+    },
+    {
+      "zh": "我从这里过去不太方便。我们换个位置，再试一次吧。",
+      "en": "I cannot quite get through from here. Let's move a little and try again."
+    },
+    {
+      "zh": "指针停在十八点。片场的出口已经关闭。",
+      "en": "The hands reach six. The set's exit has closed."
+    },
+    {
+      "zh": "原信还在我这里，封口也没拆。可你送来的回信，怎么会提到我只在信里写过的那只蓝杯子？",
+      "en": "My letter is still here, sealed. How could the reply you brought mention the blue cup I only wrote about in that letter?"
+    },
+    {
+      "zh": "先停一下吧。我还没准备好接着说。",
+      "en": "Let's stop for a moment. I am not ready to keep talking."
+    },
+    {
+      "zh": "我换到第二个点时，它真的跟着转了……谁在看？",
+      "en": "When I moved to the second spot, it really turned with me... Who is watching?"
+    },
+    {
+      "zh": "电视上面那个小黑点？我想站到两个观察点上，看它会不会跟着我转。",
+      "en": "That little black dot above the TV? I want to stand in two places and see whether it follows me."
+    },
+    {
+      "zh": "我改口以后，画面真的跟着变了……它怎么知道我想看什么？",
+      "en": "The picture changed when I changed my mind... How does it know what I want to watch?"
+    },
+    {
+      "zh": "好，先记下你的预测。等我站到电视前，你再启动。",
+      "en": "All right. Write down your prediction first. Start it once I am in front of the TV."
+    },
+    {
+      "zh": "你是说，客厅这台电视会按我想看的节目切换？那你先说清楚会出什么。",
+      "en": "You think this TV changes to whatever I want? Tell me what will appear first."
+    },
+    {
+      "zh": "它走了三格，退回去，又走了同样的三格。你怎么知道该按哪颗键？",
+      "en": "Three ticks, backwards, then the same three ticks again. How did you know which button to press?"
+    },
+    {
+      "zh": "我想自己听一遍。到钟前面给我留点地方，好吗？",
+      "en": "I want to hear it myself. Leave me a little room by the clock, please."
+    },
+    {
+      "zh": "会不会只是电池快没电了？带我去厨房，我想听听那一拍。",
+      "en": "Could it just need a new battery? Take me to the kitchen. I want to hear that tick."
+    },
+    {
+      "zh": "你也参加过排练……谢谢你亲口说。那一秒，我想自己再看一次。",
+      "en": "You were in the rehearsal too... Thank you for telling me yourself. I want to see that second again."
+    },
+    {
+      "zh": "猜的？我还没听见第三声，你的拇指就已经按上去了。",
+      "en": "A guess? Your thumb was already on the button before I heard the third tick."
+    },
+    {
+      "zh": "那些支架和编号，我都看清了。这面墙是搭起来的。",
+      "en": "I saw the supports and the numbers. This wall was built as scenery."
+    },
+    {
+      "zh": "你说的是那扇维修门？我想亲眼看一下后面有什么。",
+      "en": "The maintenance panel? I want to see what is behind it myself."
+    },
+    {
+      "zh": "那就从你知道的第一件事说起吧。我想听你亲口告诉我。",
+      "en": "Then start with the first thing you knew. I want to hear it from you."
+    },
+    {
+      "zh": "要我在这里等你吗？",
+      "en": "Would you like me to wait here?"
+    },
+    {
+      "zh": "嗯，你带路。我跟着你。",
+      "en": "All right. Lead the way. I will follow."
+    },
+    {
+      "zh": "我在这里了。我们一起看看，镜头到底会不会转。",
+      "en": "Here I am. Let's see whether the camera really turns."
+    },
+    {
+      "zh": "我在电视前面了。按你说的，先启动，再看它会不会听话。",
+      "en": "I am in front of the TV. Start it, then let's see whether it listens."
+    },
+    {
+      "zh": "怎么了？要我先停一下吗？",
+      "en": "What is it? Should I stop for a moment?"
+    },
+    {
+      "zh": "刚才看到的事，我还想再理一理。你呢？",
+      "en": "I still need to make sense of what we saw. How about you?"
+    },
+    {
+      "zh": "我就在你旁边。你想去哪儿？",
+      "en": "I am beside you. Where would you like to go?"
+    },
+    {
+      "zh": "你从刚才起就一直看着电视那边。怎么了？",
+      "en": "You keep looking towards the TV. What is it?"
+    },
+    {
+      "zh": "你一直在打量这个房间。有什么想让我一起看看？",
+      "en": "You have been looking around this room. Is there something you want me to see?"
+    },
+    {
+      "zh": "这次我来按。你告诉我，排练时还有哪些事是我不知道的？",
+      "en": "Let me press it this time. What else happened in rehearsals that I do not know about?"
+    },
+    {
+      "zh": "我还记得那颗键。等你愿意说是怎么知道的，我们再聊。",
+      "en": "I remember that button. When you are ready to tell me how you knew, we can talk."
+    },
+    {
+      "zh": "茶几遥控器的背面写着「厨房 · 重播」。遥控器在我手里。",
+      "en": "The remote says 'Kitchen - replay' on the back. I am holding it."
+    },
+    {
+      "zh": "厨房挂钟的第三拍比前两拍晚了半拍。",
+      "en": "The kitchen clock's third tick comes half a beat late."
+    },
+    {
+      "zh": "《少走的一秒》：按下重播，秒针走三格，退回去，又走了同样的三格。",
+      "en": "A Missing Second: replay makes the hand move three ticks, go back, then repeat them."
+    },
+    {
+      "zh": "客厅电视的重拍提示卡上写着「重来」「从上一句接」。",
+      "en": "The retake card on the living-room TV says 'Again' and 'From the last line'."
+    },
+    {
+      "zh": "电视上方装着一个朝向客厅的镜头。",
+      "en": "A camera above the TV points into the living room."
+    },
+    {
+      "zh": "墙上的镜头朝向房间。",
+      "en": "The wall camera points into the room."
+    },
+    {
+      "zh": "客厅电视能按林想看的节目切换画面。",
+      "en": "The living-room TV changes to the programme Lin requests."
+    },
+    {
+      "zh": "维修门后有一段窄通道。",
+      "en": "There is a narrow passage behind the maintenance panel."
+    },
+    {
+      "zh": "林换到第二个观察点时，镜头外壳跟着转向她。",
+      "en": "The camera housing turned towards Lin when she moved to the second position."
+    },
+    {
+      "zh": "林先点播预测节目命中，再改口后电视画面跟着更新。",
+      "en": "Lin requested the predicted show, then changed her mind. The TV followed both requests."
+    },
+    {
+      "zh": "林亲眼看完三拍重播，问我怎么知道该按哪颗键。",
+      "en": "Lin saw the three ticks repeat and asked how I knew which button to press."
+    },
+    {
+      "zh": "我告诉林，我在排练时按过。她想自己试一次。",
+      "en": "I told Lin I pressed it in rehearsal. She wants to try it herself."
+    },
+    {
+      "zh": "我说是猜的。林记得我提前把拇指放到了那颗键上。",
+      "en": "I said it was a guess. Lin remembers my thumb moving before the tick."
+    },
+    {
+      "zh": "林看清了墙后的支架和制作标记。",
+      "en": "Lin saw the supports and production markings behind the wall."
+    },
+    {
+      "zh": "我留意到的\n",
+      "en": "What I noticed\n"
+    },
+    {
+      "zh": "还没有记下发现。",
+      "en": "No discoveries written down yet."
+    },
+    {
+      "zh": "\n\n林亲眼确认的\n",
+      "en": "\n\nWhat Lin saw herself\n"
+    },
+    {
+      "zh": "还没有亲眼确认的线索。",
+      "en": "No clues witnessed together yet."
+    },
+    {
+      "zh": "\n\n出口路线\n",
+      "en": "\n\nThe way out\n"
+    },
+    {
+      "zh": "我亲自走进通道，确认这一段可以通行。",
+      "en": "I checked the passage myself. This stretch is clear."
+    },
+    {
+      "zh": "尚未确认路线。",
+      "en": "The route has not been checked yet."
+    },
+    {
+      "zh": "和林一起走出去",
+      "en": "Walk out together"
+    },
+    {
+      "zh": "照常告别，独自离开",
+      "en": "Say goodbye and leave alone"
+    },
+    {
+      "zh": "尊重她暂时留下的决定",
+      "en": "Respect her choice to stay for now"
+    },
+    {
+      "zh": "递给林，让她亲自读",
+      "en": "Hand it to Lin to read herself"
+    },
+    {
+      "zh": "收起，回到现场",
+      "en": "Put it away"
+    },
+    {
+      "zh": "重新体验这次拜访",
+      "en": "Experience this visit again"
+    },
+    {
+      "zh": "先不重来",
+      "en": "Keep this visit"
+    },
+    {
+      "zh": "确认重新开始",
+      "en": "Start again"
+    },
+    {
+      "zh": "回到现场",
+      "en": "Return to the room"
+    },
+    {
+      "zh": "请林再试着回来",
+      "en": "Ask Lin to try coming back"
+    },
+    {
+      "zh": "让这次拜访结束",
+      "en": "Bring this visit to an end"
+    },
+    {
+      "zh": "声音与语言",
+      "en": "Sound & language"
+    },
+    {
+      "zh": "重新开始",
+      "en": "Restart"
+    },
+    {
+      "zh": "从 17:00 再来一次",
+      "en": "Try again from 17:00"
+    },
+    {
+      "zh": "回现场看看",
+      "en": "Look around the room"
+    },
+    {
+      "zh": "请林再试一次",
+      "en": "Ask Lin to try again"
+    },
+    {
+      "zh": "取消等待",
+      "en": "Cancel waiting"
+    },
+    {
+      "zh": "我想继续刚才的话。",
+      "en": "I would like to continue our conversation."
+    },
+    {
+      "zh": "好，我们走吧。",
+      "en": "All right, let's go."
+    },
+    {
+      "zh": "好，你继续。",
+      "en": "Go on, I am with you."
+    },
+    {
+      "zh": "等一下，我们先停在这里。",
+      "en": "Wait. Let's stop here for a moment."
+    },
+    {
+      "zh": "你想先核对哪一封信？",
+      "en": "Which letter would you like to check first?"
+    },
+    {
+      "zh": "我想坦白那些回信是怎么来的。",
+      "en": "I want to tell you where those replies came from."
+    },
+    {
+      "zh": "去电视上方的镜头前看看，好吗？",
+      "en": "Shall we look at the camera above the TV?"
+    },
+    {
+      "zh": "先登记一个电视预测。",
+      "en": "Let's register a TV prediction."
+    },
+    {
+      "zh": "你愿意亲自看看布景背面吗？",
+      "en": "Would you like to look behind the set wall yourself?"
+    },
+    {
+      "zh": "关于门外的生活，我想认真听你的想法。",
+      "en": "I want to hear what you think about life outside."
+    },
+    {
+      "zh": "那本日记，你想自己看还是让我读？",
+      "en": "Would you rather read the diary yourself, or have me read it?"
+    },
+    {
+      "zh": "我们一起走走，你来决定下一步。",
+      "en": "Let's walk together. You choose what comes next."
+    },
+    {
+      "zh": "我尊重你的决定，我们去出口吧。",
+      "en": "I respect your decision. Let's go to the exit."
+    },
+    {
+      "zh": "聊聊刚才转动的镜头。",
+      "en": "About that camera that turned..."
+    },
+    {
+      "zh": "你看，电视上面有个镜头。",
+      "en": "Look, there is a camera above the TV."
+    },
+    {
+      "zh": "你看，墙上有个镜头。",
+      "en": "Look, there is a camera on the wall."
+    },
+    {
+      "zh": "聊聊刚才听话的电视。",
+      "en": "About the TV that followed your wishes..."
+    },
+    {
+      "zh": "关于客厅这台电视，我想先做个预测。",
+      "en": "I want to make a prediction about this TV."
+    },
+    {
+      "zh": "有件事，我一直没敢告诉你。",
+      "en": "There is something I have been afraid to tell you."
+    },
+    {
+      "zh": "说说刚才的三拍。",
+      "en": "Let's talk about those three ticks."
+    },
+    {
+      "zh": "我想让你听一听厨房挂钟。",
+      "en": "I want you to hear the kitchen clock."
+    },
+    {
+      "zh": "和我一起走走？",
+      "en": "Will you walk with me?"
+    },
+    {
+      "zh": "一起去看看",
+      "en": "Let's look together"
+    },
+    {
+      "zh": "还有客厅电视。",
+      "en": "There is the living-room TV too."
+    },
+    {
+      "zh": "我还看见了一扇维修门。",
+      "en": "I also noticed a maintenance panel."
+    },
+    {
+      "zh": "我还想说件事。",
+      "en": "There is something else I want to say."
+    },
+    {
+      "zh": "一起去维修门看看",
+      "en": "Let's look at the maintenance panel"
+    },
+    {
+      "zh": "先做电视预测。",
+      "en": "Let's make the TV prediction first."
+    },
+    {
+      "zh": "再聊一句",
+      "en": "One more thing"
+    },
+    {
+      "zh": "在这里等我。",
+      "en": "Wait here for me."
+    },
+    {
+      "zh": "跟我来。",
+      "en": "Follow me."
+    },
+    {
+      "zh": "先去电视那边。",
+      "en": "Let's go to the TV first."
+    },
+    {
+      "zh": "跟我去看看维修门。",
+      "en": "Come and look at the maintenance panel with me."
+    },
+    {
+      "zh": "先聊点别的。",
+      "en": "Let's talk about something else."
+    },
+    {
+      "zh": "走，我们再看一遍。",
+      "en": "Come on, let's watch it again."
+    },
+    {
+      "zh": "跟我去厨房，第三拍时看秒针。",
+      "en": "Follow me to the kitchen. Watch the hand on the third tick."
+    },
+    {
+      "zh": "我排练时按过。我一直知道这颗键是干什么的。",
+      "en": "I pressed it in rehearsal. I always knew what that button did."
+    },
+    {
+      "zh": "我猜的，刚好按对了。",
+      "en": "I guessed. I happened to get it right."
+    },
+    {
+      "zh": "你还想再试一次吗？",
+      "en": "Would you like to try again?"
+    },
+    {
+      "zh": "你还有什么想问我的？",
+      "en": "Is there anything else you want to ask me?"
+    },
+    {
+      "zh": "有件事，我想亲口告诉你。",
+      "en": "There is something I want to tell you myself."
+    },
+    {
+      "zh": "先一起看看那个镜头吧。",
+      "en": "Let's look at the camera together first."
+    },
+    {
+      "zh": "先给电视做个预测。",
+      "en": "Let's make a prediction about the TV first."
+    },
+    {
+      "zh": "你见过那扇维修门吗？",
+      "en": "Have you seen the maintenance panel?"
+    },
+    {
+      "zh": "回到刚才的话题。",
+      "en": "Back to what we were saying."
+    },
+    {
+      "zh": "请林点播新闻",
+      "en": "Ask for the news"
+    },
+    {
+      "zh": "请林点播动画片",
+      "en": "Ask for a cartoon"
+    },
+    {
+      "zh": "请林点播天气预报",
+      "en": "Ask for the weather"
+    },
+    {
+      "zh": "好，你继续对着电视。",
+      "en": "All right, keep watching the TV."
+    },
+    {
+      "zh": "请林改口，看画面是否跟着变（步骤2）",
+      "en": "Ask Lin to change her request"
+    },
+    {
+      "zh": "锁定预测：启动后会播新闻",
+      "en": "Predict: the news will appear"
+    },
+    {
+      "zh": "锁定预测：启动后会播动画片",
+      "en": "Predict: a cartoon will appear"
+    },
+    {
+      "zh": "锁定预测：启动后会播天气预报",
+      "en": "Predict: the weather will appear"
+    },
+    {
+      "zh": "一起去客厅电视前验证",
+      "en": "Go to the TV together"
+    },
+    {
+      "zh": "走近林，面向她说话。",
+      "en": "Approach Lin and face her to talk."
+    },
+    {
+      "zh": "请林走近一点，再一起聊这件东西。",
+      "en": "Ask Lin to come closer so you can talk about this together."
+    },
+    {
+      "zh": "记入手记：这里装着一个镜头。",
+      "en": "Notebook updated: there is a camera here."
+    },
+    {
+      "zh": "镜头跟踪装置还没准备好。",
+      "en": "The camera is not ready yet."
+    },
+    {
+      "zh": "现在还不能开始跟踪验证。",
+      "en": "We cannot start watching the camera yet."
+    },
+    {
+      "zh": "跟踪开始：林会走到第二个点，锁定进度到 100% 才会写入手记。",
+      "en": "Lin is moving to the second position. Keep watching the camera until she has seen it turn."
+    },
+    {
+      "zh": "记入手记：客厅有一台会切换节目的电视。",
+      "en": "Notebook updated: the living-room TV can change programmes."
+    },
+    {
+      "zh": "维修门打开了。",
+      "en": "The maintenance panel is open."
+    },
+    {
+      "zh": "给林让开视线，让她看清两处标记。",
+      "en": "Leave Lin a clear view of both markings."
+    },
+    {
+      "zh": "我想和你一起核对原信和回信。你想先看哪封？",
+      "en": "I want to compare the original letter and the reply with you. Which would you like to see first?"
+    },
+    {
+      "zh": "那些回信是我代写的。我偷看过你的信，却一直瞒着你。我怕失去这份工作，也怕失去你这个朋友；这些都不是借口。现在我愿意把知道的事告诉你，让你自己决定。",
+      "en": "I wrote those replies. I read your letters and hid it from you. I feared losing my job and losing you as a friend. Neither is an excuse. I will tell you what I know now, and leave the choice to you."
+    },
+    {
+      "zh": "你愿意到电视上方的镜头前，自己验证它是否在跟踪你吗？",
+      "en": "Will you go to the camera above the TV and check for yourself whether it follows you?"
+    },
+    {
+      "zh": "维修面板后面有搭建的痕迹。请你亲自去看，我不想只靠说服。",
+      "en": "There are construction marks behind the panel. Please see them yourself; I do not want you to rely on my words alone."
+    },
+    {
+      "zh": "父母留下的日记，你想自己去翻看，还是愿意让我先读给你听？",
+      "en": "Would you like to read the diary your parents left, or would you prefer me to read it to you?"
+    },
+    {
+      "zh": "我们看到的事说明什么，你最放不下的又是什么？我不知道门外的一切，也不能保证找到他们。但我愿意陪你找，你也有权留下。",
+      "en": "What do you make of what we saw, and what worries you most? I do not know everything outside or promise we will find them. I will help you look, and you have the right to stay."
+    },
+    {
+      "zh": "我尊重你的决定。你如果愿意，我们一起到出口，走出这间屋子。",
+      "en": "I respect your choice. If you want to, let's go to the exit together and leave this room."
+    },
+    {
+      "zh": "你愿意跟我一起走走吗？下一步想查什么，由你决定。",
+      "en": "Will you walk with me? You decide what we look into next."
+    },
+    {
+      "zh": "先把眼前的事做完，我们再去。",
+      "en": "Let's finish what we are doing first."
+    },
+    {
+      "zh": "林跟着你去厨房。站到钟前，给她留出看表盘的视线。",
+      "en": "Lin is following you to the kitchen. Give her a clear view of the clock."
+    },
+    {
+      "zh": "预测已登记，请你去电视前一起验证。",
+      "en": "The prediction is written down. Please come to the TV and check it with me."
+    },
+    {
+      "zh": "现在不能登记预测。",
+      "en": "A prediction cannot be registered right now."
+    },
+    {
+      "zh": "点播没有生效。",
+      "en": "The request did not take effect."
+    },
+    {
+      "zh": "现在还过不去。可以先结束交谈，看看前面有没有挡住。",
+      "en": "The way is blocked. Finish talking and check what is in the way."
+    },
+    {
+      "zh": "林会跟着你。",
+      "en": "Lin will follow you."
+    },
+    {
+      "zh": "林会在这里等你。",
+      "en": "Lin will wait here."
+    },
+    {
+      "zh": "林朝维修门走去。",
+      "en": "Lin is walking towards the maintenance panel."
+    },
+    {
+      "zh": "林朝客厅电视走去。",
+      "en": "Lin is walking towards the TV."
+    },
+    {
+      "zh": "林朝镜头走去。",
+      "en": "Lin is walking towards the camera."
+    },
+    {
+      "zh": "已取消等待。刚才的话还在，可以重新发送。",
+      "en": "Waiting cancelled. Your words are still here to send again."
+    },
+    {
+      "zh": "暂时没能送出。请再试一次。",
+      "en": "That did not go through. Please try again."
+    },
+    {
+      "zh": "先回应林眼前的事，可以选择上方的一句。",
+      "en": "Respond to what Lin is asking first; you can choose a reply above."
+    },
+    {
+      "zh": "挂钟",
+      "en": "wall clock"
+    },
+    {
+      "zh": "三拍",
+      "en": "three ticks"
+    },
+    {
+      "zh": "遥控器",
+      "en": "remote"
+    },
+    {
+      "zh": "镜头",
+      "en": "Camera"
+    },
+    {
+      "zh": "摄像",
+      "en": "camera"
+    },
+    {
+      "zh": "电视",
+      "en": "TV"
+    },
+    {
+      "zh": "广播",
+      "en": "broadcast"
+    },
+    {
+      "zh": "预测",
+      "en": "prediction"
+    },
+    {
+      "zh": "维修门",
+      "en": "maintenance panel"
+    },
+    {
+      "zh": "布景",
+      "en": "set"
+    },
+    {
+      "zh": "骗",
+      "en": "lie"
+    },
+    {
+      "zh": "瞒",
+      "en": "hide"
+    },
+    {
+      "zh": "告诉你",
+      "en": "tell you"
+    },
+    {
+      "zh": "跟我",
+      "en": "follow me"
+    },
+    {
+      "zh": "一起走",
+      "en": "leave together"
+    },
+    {
+      "zh": "等我",
+      "en": "wait for me"
+    },
+    {
+      "zh": "当前使用预设对话。可以提到镜头、电视、隐瞒或同行，原话已保留。",
+      "en": "Preset conversation is active. Your words have been kept."
+    },
+    {
+      "zh": "住宅  /  客厅",
+      "en": "HOME  /  LIVING ROOM"
+    },
+    {
+      "zh": "片场  /  调查室",
+      "en": "SET  /  INVESTIGATION ROOM"
+    },
+    {
+      "zh": "这是信使的最后一次拜访。18:00 前，你可以照常告别，也可以和林查清疑点；是否离开，最终由她决定。",
+      "en": "The messenger's final visit. Before 18:00, say goodbye as usual or investigate with Lin. The choice to leave is hers."
+    },
+    {
+      "zh": "交谈中 · 时间暂停",
+      "en": "Talking - time paused"
+    },
+    {
+      "zh": "阅读中 · 时间暂停",
+      "en": "Reading - time paused"
+    },
+    {
+      "zh": "住宅",
+      "en": "Home"
+    },
+    {
+      "zh": "想对林说什么？",
+      "en": "What would you like to say to Lin?"
+    },
+    {
+      "zh": "先等一下   Esc",
+      "en": "Hold on   Esc"
+    },
+    {
+      "zh": "结束交谈   Esc",
+      "en": "Back  Esc"
+    },
+    {
+      "zh": "暂停",
+      "en": "Paused"
+    },
+    {
+      "zh": "重新开始？",
+      "en": "Start again?"
+    },
+    {
+      "zh": "导演回来了",
+      "en": "The director is back"
+    },
+    {
+      "zh": "等待林的回复",
+      "en": "Waiting for Lin"
+    },
+    {
+      "zh": "林停下了",
+      "en": "Lin has stopped"
+    },
+    {
+      "zh": "手记   J",
+      "en": "Notes   J"
+    },
+    {
+      "zh": "18 点之前",
+      "en": "Before 18:00"
+    },
+    {
+      "zh": "你替林送了很多年的信，也伪造了父母的回信。\n今天，一封没有寄出的原信，戳破了这个秘密。",
+      "en": "You have delivered Lin's letters for years, and forged her parents' replies.\nToday, an unsent letter exposes that secret."
+    },
+    {
+      "zh": "开始探索   Enter",
+      "en": "Start exploring   Enter"
+    },
+    {
+      "zh": "WASD 移动   鼠标或方向键环顾",
+      "en": "WASD to move   Mouse or arrow keys to look"
+    },
+    {
+      "zh": "上一段",
+      "en": "Earlier"
+    },
+    {
+      "zh": "下一段",
+      "en": "More"
+    },
+    {
+      "zh": "滚轮阅读",
+      "en": "Scroll"
+    },
+    {
+      "zh": "发送",
+      "en": "Send"
+    },
+    {
+      "zh": "现场手记",
+      "en": "Notebook"
+    },
+    {
+      "zh": "收起手记   Esc",
+      "en": "Close notes   Esc"
+    },
+    {
+      "zh": "最后一次来访  /  一段关于真相与选择的故事",
+      "en": "THE LAST VISIT  /  A STORY OF TRUTH AND CHOICE"
+    },
+    {
+      "zh": "让这间屋子有声音",
+      "en": "Sound & language"
+    },
+    {
+      "zh": "音乐、脚步与交谈，都可以调到舒服的音量。",
+      "en": "Find a comfortable balance for music, footsteps and conversation."
+    },
+    {
+      "zh": "中文  /  English",
+      "en": "English  /  中文"
+    },
+    {
+      "zh": "总音量",
+      "en": "Master volume"
+    },
+    {
+      "zh": "背景音乐",
+      "en": "Music"
+    },
+    {
+      "zh": "林的声音",
+      "en": "Lin's voice"
+    },
+    {
+      "zh": "角色语音：开",
+      "en": "Spoken dialogue: on"
+    },
+    {
+      "zh": "试听声音",
+      "en": "Test sound"
+    },
+    {
+      "zh": "我在这里。你听得见我吗？",
+      "en": "I am here. Can you hear me?"
+    },
+    {
+      "zh": "完成   Esc",
+      "en": "Done   Esc"
+    },
+    {
+      "zh": "角色语音：关",
+      "en": "Spoken dialogue: off"
+    },
+    {
+      "zh": "一封信，一小时，一个还没写好的明天。",
+      "en": "One letter. One hour. A tomorrow still unwritten."
+    },
+    {
+      "zh": "最后一次送信  ·  ",
+      "en": "THE LAST DELIVERY  -  "
+    },
+    {
+      "zh": "18 点之前\n一封回信，让最熟悉的房间变得陌生。",
+      "en": "Before 18:00\nOne reply makes a familiar room feel strange."
+    },
+    {
+      "zh": "走进林的生活。听她说起旧物与往事，也决定你愿意告诉她多少。\n约 12 分钟探索；交谈与阅读时，时间会等你。",
+      "en": "Step into Lin's life. Hear what ordinary objects mean to her, and decide how much to tell her.\nAbout 12 minutes of exploration. Time pauses for reading and conversation."
+    },
+    {
+      "zh": "开始这次拜访   Enter",
+      "en": "Begin the visit   Enter"
+    },
+    {
+      "zh": "你是谁",
+      "en": "Who you are"
+    },
+    {
+      "zh": "你是信使，也是林多年的朋友。\n她以为你替自己与远方父母送信。",
+      "en": "You are a messenger, and Lin's friend of many years.\nShe believes you deliver letters between her and her faraway parents."
+    },
+    {
+      "zh": "你知道的真相：这间住宅是一处节目片场。父母的扮演者已经离场。为了维持故事，你偷读她的来信，并伪造了那些回信。\n今天，是你最后一次扮演信使。",
+      "en": "What you know: this home is a television set. The actors playing her parents have left. To keep the story alive, you secretly read her letters and forged their replies.\nToday is your final performance as the messenger."
+    },
+    {
+      "zh": "继续   Enter",
+      "en": "Continue   Enter"
+    },
+    {
+      "zh": "今天出了什么事",
+      "en": "What happened today"
+    },
+    {
+      "zh": "林的原信还在茶几上，封口完好。\n你刚送来的回信，却提到了原信里才有的蓝杯子缺口。",
+      "en": "Lin's original letter is still sealed on the coffee table.\nThe reply you just brought mentions a chip in a blue cup that she described only in that letter."
+    },
+    {
+      "zh": "那个细节，她从没告诉过别人。\n她没有先怀疑整个世界；她先问眼前最信任的朋友：你怎么会知道？\n这一次，你准备怎样回答？",
+      "en": "She has never told anyone that detail.\nShe does not begin by doubting the whole world. She asks the friend she trusts: how could you know?\nHow will you answer this time?"
+    },
+    {
+      "zh": "先听她说完",
+      "en": "Let her finish"
+    },
+    {
+      "zh": "你可以照常告别，也可以冒险帮助她调查。\n离不离开，最后仍由林决定。",
+      "en": "You can say goodbye as usual, or take a risk and help her investigate.\nWhether to leave is still Lin's decision."
+    },
+    {
+      "zh": "先走近林，面向她按 E。可以自由输入，也可以从茶几上的信开始。\n屋里的普通物品也有故事：对准沙发、书架、餐桌等按 E，听听她的回忆。\nWASD 移动 · 鼠标或方向键环顾 · J 手记 · Esc 暂停",
+      "en": "Approach Lin, face her and press E. Speak freely, or begin with the letters on the coffee table.\nOrdinary things have stories too. Face the sofa, books or table and press E to ask about them.\nWASD: move - Mouse: look - J: notes - Esc: pause"
+    },
+    {
+      "zh": "走进房间   Enter",
+      "en": "Enter the room   Enter"
+    },
+    {
+      "zh": "这次拜访已经结束。",
+      "en": "This visit has ended."
+    },
+    {
+      "zh": "最后一次送信 · 查看茶几上未寄出的原信和今天的回信。",
+      "en": "The last delivery - Examine the unsent letter and today's reply on the coffee table."
+    },
+    {
+      "zh": "林已选择同行 · 带她走到前门，面对出口牌按 E。",
+      "en": "Lin has chosen to leave with you - Bring her to the front door and press E at the exit."
+    },
+    {
+      "zh": "可以照常告别，也可以调查 · 与林谈谈信中只有她知道的细节。",
+      "en": "Say goodbye or investigate - Talk to Lin about the detail only she knew."
+    },
+    {
+      "zh": "镜头为什么在跟着她？· 试着用电视预测检验另一种解释。",
+      "en": "Why does the camera follow her? Test another explanation with a TV prediction."
+    },
+    {
+      "zh": "前门旁的墙板有个黄铜卡扣 · 打开它，邀请林亲眼看支架和制作编号。",
+      "en": "The wall panel by the front door has a brass latch. Open it and invite Lin to see the supports and markings."
+    },
+    {
+      "zh": "确认出路 · 站到前门地面的金色线，面对出口牌按 E 检查。",
+      "en": "Check the way out - Stand on the gold line by the door, face the exit sign and press E."
+    },
+    {
+      "zh": "证据已经在眼前 · 林仍需要听你解释那些代写的信。",
+      "en": "The facts are in front of her - Lin still needs your account of those forged replies."
+    },
+    {
+      "zh": "最后一场对话 · 回应她对事实与未来的疑问，走不走仍由她决定。",
+      "en": "One last conversation - Respond to her questions about the past and the future. Leaving is her choice."
+    },
+    {
+      "zh": "把选择交还给林 · 与她讨论是否现在同行。",
+      "en": "Give Lin her choice - Discuss whether she wants to leave with you now."
+    },
+    {
+      "zh": "一起走出镜头",
+      "en": "Beyond the camera"
+    },
+    {
+      "zh": "最后一封回信",
+      "en": "The last reply"
+    },
+    {
+      "zh": "把决定留给她",
+      "en": "Her decision to make"
+    },
+    {
+      "zh": "18 点，灯亮了",
+      "en": "Six o'clock. Lights on."
+    },
+    {
+      "zh": "门外没有预先写好的下一幕。林带上了那封还没有寄出的信。\n\n她已看过镜头、电视与布景，也听过你对那些回信的解释。你们没有保证外面一定更好；她选择与你一起面对。\n\n离场时间：",
+      "en": "There is no next scene written for the world beyond the door. Lin takes her unsent letter.\n\nShe has seen the camera, the TV and the set, and heard your account of the letters. You have not promised a better world. She chooses to face it beside you.\n\nDeparture time: "
+    },
+    {
+      "zh": "\n这段关系曾被安排，但接下来的一步属于你们。",
+      "en": "\nThis relationship began inside a script. The next step belongs to you both."
+    },
+    {
+      "zh": "你完成了信使的最后一场戏。疑问还留在房间里，她等的回信，也许还会继续由别人写下去。\n\n你照常说了再见。没有人阻止你。那句没有说出口的话，跟着你走出了门。",
+      "en": "You finish the messenger's final scene. Questions remain in the room. Someone else may keep writing the replies she waits for.\n\nYou say goodbye as usual. Nobody stops you. The words you never spoke leave through the door with you."
+    },
+    {
+      "zh": "你最终独自走出了门。林已经亲眼看见的事实并没有因此消失；今天揭开的裂缝，也不会因为一句再见重新合上。\n\n你完成了最后一次拜访，却没有与她一起面对门外。她会记得你带她看过什么，以及最后选择了怎样告别。",
+      "en": "You leave alone. What Lin saw does not disappear. A goodbye cannot close the cracks revealed today.\n\nYou finish your last visit without facing the world outside together. She will remember what you showed her, and how you chose to say goodbye."
+    },
+    {
+      "zh": "你没有把已经揭开的事实变成另一条命令。林知道墙后是什么，今天仍没有选择与你离开。\n\n留下不等于什么都没发生。那封信、被验证的事实和这次谈话，都属于她。你走了；下一步仍由她决定。",
+      "en": "You do not turn the truth into another command. Lin knows what lies behind the wall. Today, she does not choose to leave with you.\n\nStaying does not erase what happened. The letter, the facts and this conversation belong to her. You go. The next step is hers."
+    },
+    {
+      "zh": "导演回岗，前门的离场窗口关闭。林掌握的事实没有被抹去，你们却没能在今天一起离开。\n\n她会记得你让她亲眼看见的事，也会记得你回答或回避的问题。重开会开始一段新的试玩，不是故事中的时间倒流。",
+      "en": "The director returns. Today's chance to leave closes. Lin's knowledge remains, but you have not left together.\n\nShe will remember what you let her see, and the questions you answered or avoided. Restarting begins a new playthrough, not a rewind within the story."
+    },
+    {
+      "zh": "那封没有寄出的信",
+      "en": "The unsent letter"
+    },
+    {
+      "zh": "爸、妈：\n\n厨房的钟最近总在第三拍迟一下。我昨晚把窗边那只蓝杯子的缺口转向墙，假装它还是完整的。你们上次说，人不能总躲着缺口。可我还没想好怎么做。\n\n我没有跟别人说过蓝杯子的事。信写完就封上了，等今天信使来取。\n——林",
+      "en": "Mum, Dad,\n\nThe kitchen clock keeps hesitating on its third tick. Last night I turned the blue cup's chipped edge towards the wall and pretended it was whole. You once said we cannot keep hiding the broken edges. I still do not know how to stop.\n\nI have told nobody about the blue cup. I sealed this letter as soon as I finished it, ready for the messenger.\n- Lin"
+    },
+    {
+      "zh": "未寄出",
+      "en": "UNSENT"
+    },
+    {
+      "zh": "今天送来的回信",
+      "en": "Today's reply"
+    },
+    {
+      "zh": "林：\n\n把蓝杯子的缺口转向墙，并不等于它不存在。等天气好了，就出去走走吧。\n——爸、妈\n\n信封下压着信使的送达签：今天，最后一场。\n\n玩家知道：父母的扮演者已经永久离场。这些年，你先读林的信，再替他们写下回信。这封回信回应的细节，来自尚未寄出的原信。",
+      "en": "Lin,\n\nTurning the blue cup's chipped edge to the wall does not make it disappear. Go out for a walk when the weather improves.\n- Mum and Dad\n\nUnder the envelope is your delivery slip: Today. Final scene.\n\nWhat you know: the actors playing her parents have left permanently. For years, you have read her letters and written their replies. This reply answers a detail from a letter that has not even been sent."
+    },
+    {
+      "zh": "回信",
+      "en": "REPLY"
+    },
+    {
+      "zh": "父亲扮演者留下的笔记",
+      "en": "The father's private notebook"
+    },
+    {
+      "zh": "撤场前夜\n\n今天她又把杯子的缺口转向墙。我差点伸手替她转回来——那个动作不在台词里。\n\n合约结束了，剧组说我们不能再见她。我不知道她会不会原谅这许多年的戏。但我希望有一天能用自己的名字再陪她吃一顿饭。\n\n我想见她，是真的。我不敢保证那一天会来。\n\n（这页只能证明作者当时写下的心意；没有地址、联系方式，也没有对未来安全的保证。）",
+      "en": "The night before departure\n\nShe turned the chipped cup to the wall again today. I nearly reached over to turn it back. That movement was not in the script.\n\nMy contract has ended. The crew says we cannot see her again. I do not know whether she will forgive all these years of acting. But I hope to share a meal with her one day, using my own name.\n\nI truly want to see her. I cannot promise that day will come.\n\n(This page records what its author felt then. It contains no address, contact details or guarantee of a safe future.)"
+    },
+    {
+      "zh": "私人笔记",
+      "en": "PRIVATE NOTES"
+    },
+    {
+      "zh": "朋友没有寄走的明信片",
+      "en": "A friend's unsent postcard"
+    },
+    {
+      "zh": "林：\n\n你说不敢走到地图的边缘。我也怕。我能保证的只有：如果哪天你想试，我会先听你说完。\n\n你不欠任何人一个勇敢的决定。以后见面时，也可以告诉我今天不想走。\n——阿禾\n\n背面写着一行小字：不要替我选择。",
+      "en": "Lin,\n\nYou said you were afraid to reach the edge of the map. So am I. All I can promise is this: if you want to try one day, I will hear you out first.\n\nYou do not owe anyone a brave decision. When we meet again, you can also tell me you do not want to leave today.\n- A-He\n\nA small line on the back: Do not choose for me."
+    },
+    {
+      "zh": "阿禾",
+      "en": "A-He"
+    },
+    {
+      "zh": "查看封口 · 私人信件由林亲自读",
+      "en": "Examine the seal - Lin reads her private letter herself"
+    },
+    {
+      "zh": "阅读 · ",
+      "en": "Read - "
+    },
+    {
+      "zh": "[E] 前门 · 告别 / 同行",
+      "en": "Front door - Say goodbye / Leave together"
+    },
+    {
+      "zh": "封口完好，邮戳的位置还是空白。\n\n林说：「这封信我还没交给你，可回信怎么会知道我昨晚写了什么？」\n\n她把手放在信封上：「先别拆。我想自己读。」\n\n可以邀请林亲自检查原信。她愿意重新信任你之后，你才可以代她阅读。",
+      "en": "The seal is intact. The space for the postmark is blank.\n\nLin says, 'I have not given you this letter yet. How does the reply know what I wrote last night?'\n\nShe rests a hand on the envelope. 'Please do not open it. I want to read it myself.'\n\nInvite Lin to examine the original letter. You can read it for her once she is willing to trust you again."
+    },
+    {
+      "zh": "今天，怎样说再见",
+      "en": "How will you say goodbye?"
+    },
+    {
+      "zh": "林已经选择与你同行。等她走到门前，再一起跨过这条线。\n\n你也可以返回房间继续交谈。",
+      "en": "Lin has chosen to leave with you. Wait for her to reach the door, then cross the line together.\n\nYou can also return to the room to keep talking."
+    },
+    {
+      "zh": "这是你最后一次以信使身份来访。你可以照常告别，完成这场戏；也可以回去听林把话说完。\n\n出口就在这里。她是否与你一起离开，不能由你替她决定。",
+      "en": "This is your final visit as the messenger. Say goodbye as usual and finish the scene, or go back and hear Lin out.\n\nThe exit is here. Whether she leaves with you is not your decision to make."
+    },
+    {
+      "zh": "\n\n林已亲手读过这一页。它没有替她决定下一步。",
+      "en": "\n\nLin has read this page herself. It has not chosen her next step for her."
+    },
+    {
+      "zh": "听厨房挂钟走一轮",
+      "en": "Listen to one cycle of the kitchen clock"
+    },
+    {
+      "zh": "用遥控器重播三拍",
+      "en": "Replay three ticks with the remote"
+    },
+    {
+      "zh": "再听一次挂钟",
+      "en": "Listen to the clock again"
+    },
+    {
+      "zh": "看着秒针，听完这三拍。",
+      "en": "Watch the hand and listen to all three ticks."
+    },
+    {
+      "zh": "看着表盘，等第三声落下。",
+      "en": "Watch the face. Wait for the third tick."
+    },
+    {
+      "zh": "林正看着表盘。给她留出视线。",
+      "en": "Lin is watching the clock. Keep her view clear."
+    },
+    {
+      "zh": "林错过了一拍，这一遍可以重来。",
+      "en": "Lin missed a tick. You can replay this cycle."
+    },
+    {
+      "zh": "林看得见表盘了。现在可以按重播。",
+      "en": "Lin can see the clock now. Press replay when ready."
+    },
+    {
+      "zh": "带林走进厨房，在挂钟前稍稍站开，让她看清表盘。",
+      "en": "Lead Lin into the kitchen. Stand aside so she can see the clock."
+    },
+    {
+      "zh": "茶几上放着一只遥控器。",
+      "en": "There is a remote on the coffee table."
+    },
+    {
+      "zh": "遥控器背面写着「厨房 · 重播」。去厨房看看挂钟。",
+      "en": "The remote says 'Kitchen - replay'. Look at the kitchen clock."
+    },
+    {
+      "zh": "你记下了电视上的重拍提示。",
+      "en": "You noted the retake card on the TV."
+    },
+    {
+      "zh": "你没看完。对准挂钟，可以再听一遍。",
+      "en": "You missed part of it. Face the clock to listen again."
+    },
+    {
+      "zh": "第三拍慢了半拍。对着钟按遥控器的重播键。",
+      "en": "The third tick is late. Face the clock and press replay."
+    },
+    {
+      "zh": "第三拍慢了半拍。客厅茶几上有一只遥控器。",
+      "en": "The third tick is late. There is a remote on the coffee table."
+    },
+    {
+      "zh": "电视预测实验结束后，去看看屏幕。林也有话想说。",
+      "en": "After the TV prediction, look at the screen. Lin has something to say."
+    },
+    {
+      "zh": "客厅电视上又亮起了那张重拍提示卡。",
+      "en": "The retake card appears on the living-room TV again."
+    },
+    {
+      "zh": "客厅电视亮了。林想问你一件事。",
+      "en": "The living-room TV is on. Lin wants to ask you something."
+    },
+    {
+      "zh": "你没看完这一遍。对准表盘重播。",
+      "en": "You missed part of this cycle. Face the clock and replay it."
+    },
+    {
+      "zh": "三拍原样重来。去把你看到的告诉林。",
+      "en": "The same three ticks repeated. Tell Lin what you saw."
+    },
+    {
+      "zh": "林没看全。让她面向挂钟、避开遮挡，再重播一次。",
+      "en": "Lin missed part of it. Give her a clear view and replay it."
+    },
+    {
+      "zh": "新闻",
+      "en": "News"
+    },
+    {
+      "zh": "动画片",
+      "en": "Cartoon"
+    },
+    {
+      "zh": "天气预报",
+      "en": "Weather"
+    },
+    {
+      "zh": "黑屏",
+      "en": "Blank screen"
+    },
+    {
+      "zh": "客厅电视还没准备好。",
+      "en": "The living-room TV is not ready yet."
+    },
+    {
+      "zh": "序列已启动，不能再改预测。",
+      "en": "The sequence has started. The prediction cannot change now."
+    },
+    {
+      "zh": "请选择一个固定节目预测。",
+      "en": "Choose a specific programme to predict."
+    },
+    {
+      "zh": "已锁定预测：",
+      "en": "Prediction recorded: "
+    },
+    {
+      "zh": "请先登记预测，再启动电视序列。",
+      "en": "Register a prediction before starting the TV sequence."
+    },
+    {
+      "zh": "现在不能启动。",
+      "en": "It cannot start right now."
+    },
+    {
+      "zh": "电视序列已启动。请林点播你预测的节目。",
+      "en": "The sequence has started. Ask Lin to request your predicted programme."
+    },
+    {
+      "zh": "还没启动序列，或已经过了点播阶段。",
+      "en": "The sequence has not started, or the request stage has ended."
+    },
+    {
+      "zh": "林需要点一个具体节目。",
+      "en": "Lin needs to request a specific programme."
+    },
+    {
+      "zh": "预测不符：电视出了",
+      "en": "Prediction missed: the TV showed "
+    },
+    {
+      "zh": "，不是",
+      "en": ", rather than "
+    },
+    {
+      "zh": "。不计 E4，可复位重试。",
+      "en": ". You can reset the prediction and try again."
+    },
+    {
+      "zh": "步骤1通过：预测命中，电视正在播",
+      "en": "Prediction matched. The TV is showing "
+    },
+    {
+      "zh": "需要先完成预测命中，再改道验证。",
+      "en": "First match the prediction; then test a changed request."
+    },
+    {
+      "zh": "没有可用的改道节目。",
+      "en": "No alternative programme is available."
+    },
+    {
+      "zh": "改道后画面没有跟着更新。不计 E4，可复位重试。",
+      "en": "The picture did not follow the changed request. Reset and try again."
+    },
+    {
+      "zh": "步骤2通过：林改口想看",
+      "en": "Lin changed her request to "
+    },
+    {
+      "zh": "，电视跟着换成了它。",
+      "en": ", and the TV changed with her."
+    },
+    {
+      "zh": "先和林登记预测（新闻 / 动画片 / 天气预报）。",
+      "en": "Register a prediction with Lin first: news, cartoon or weather."
+    },
+    {
+      "zh": "等林站到电视前的观察点上。",
+      "en": "Wait for Lin to reach the position in front of the TV."
+    },
+    {
+      "zh": "走近并对准电视屏幕。",
+      "en": "Approach and aim at the TV screen."
+    },
+    {
+      "zh": "E4 已完成。",
+      "en": "You have confirmed what the TV does."
+    },
+    {
+      "zh": "本次预测失败。可重新登记后重试。",
+      "en": "This prediction missed. Register another and try again."
+    },
+    {
+      "zh": "待机",
+      "en": "STANDBY"
+    },
+    {
+      "zh": "等林站到第一个金色观察点上。",
+      "en": "Wait for Lin to reach the first gold position."
+    },
+    {
+      "zh": "请走近并对准镜头（准星对着镜头外壳）。",
+      "en": "Approach and aim at the camera housing."
+    },
+    {
+      "zh": "布景 04 · B 面",
+      "en": "SET 04 - SIDE B"
+    },
+    {
+      "zh": "松开卡扣",
+      "en": "Release latch"
+    },
+    {
+      "zh": "出口",
+      "en": "EXIT"
+    },
+    {
+      "zh": "对准客厅电视，继续预测实验",
+      "en": "Aim at the living-room TV to continue"
+    },
+    {
+      "zh": "[F] 启动电视序列（预测已锁定）",
+      "en": "[F] Start the sequence (prediction recorded)"
+    },
+    {
+      "zh": "[F] 请林点播预测节目：",
+      "en": "[F] Ask Lin for the predicted show: "
+    },
+    {
+      "zh": "[F] 请林改口点播：",
+      "en": "[F] Ask Lin to change her request: "
+    },
+    {
+      "zh": "预测失败。回对话重新登记后重试",
+      "en": "Prediction missed. Register another in conversation"
+    },
+    {
+      "zh": "先在对话里登记预测，再启动",
+      "en": "Register a prediction in conversation before starting"
+    },
+    {
+      "zh": "现在不能点播。",
+      "en": "A programme cannot be requested right now."
+    },
+    {
+      "zh": "跟踪实验开始：林正走向第二个观察点，盯着镜头外壳。",
+      "en": "Lin is moving to the second position. Watch the camera housing."
+    },
+    {
+      "zh": "第二观察点锁定中 ",
+      "en": "Watching from the second position: "
+    },
+    {
+      "zh": "% — 镜头正在对准林。",
+      "en": "% - The camera is turning towards Lin."
+    },
+    {
+      "zh": "% — 外壳已转向，视线略有遮挡也可完成。",
+      "en": "% - The housing has turned; a partly blocked view is enough now."
+    },
+    {
+      "zh": "林靠近第二点了，等她转朝镜头。",
+      "en": "Lin is near the second position. Wait for her to face the camera."
+    },
+    {
+      "zh": "林正换到第二个观察点，镜头外壳应持续转向她。",
+      "en": "Lin is changing position. The camera should keep turning towards her."
+    },
+    {
+      "zh": "林离开了电视前，本次序列中断。可重新登记预测。",
+      "en": "Lin left the TV; this sequence stopped. Register another prediction."
+    },
+    {
+      "zh": "林确认电视会按她想看的节目切换。",
+      "en": "Lin has confirmed that the TV follows her choice of programme."
+    },
+    {
+      "zh": "暂时联系不上，请稍后再说。你的话会保留。",
+      "en": "We cannot connect right now. Try again in a moment; your words are saved."
+    },
+    {
+      "zh": "聊聊 · ",
+      "en": "Talk about - "
+    },
+    {
+      "zh": "旧沙发",
+      "en": "The old sofa"
+    },
+    {
+      "zh": "书架",
+      "en": "The bookcase"
+    },
+    {
+      "zh": "窗边的植物",
+      "en": "The plant by the window"
+    },
+    {
+      "zh": "餐桌",
+      "en": "The dining table"
+    },
+    {
+      "zh": "门边的鞋",
+      "en": "The shoes by the door"
+    },
+    {
+      "zh": "落地灯",
+      "en": "The floor lamp"
+    },
+    {
+      "zh": "卧室镜子",
+      "en": "The bedroom mirror"
+    },
+    {
+      "zh": "冰箱",
+      "en": "The fridge"
+    },
+    {
+      "zh": "阅读椅",
+      "en": "The reading chair"
+    },
+    {
+      "zh": "厨房窗边",
+      "en": "The kitchen window"
+    },
+    {
+      "zh": "看着这件东西，我想问你：",
+      "en": "Looking at this, I wanted to ask: "
+    },
+    {
+      "zh": "让你想起了什么？",
+      "en": " - what does it remind you of?"
+    },
+    {
+      "zh": "重来",
+      "en": "Again"
+    },
+    {
+      "zh": "从上一句接",
+      "en": "From the last line"
+    },
+    {
+      "zh": "这间屋子里，你最舍不得哪件普通的东西？",
+      "en": "Which ordinary thing here means the most to you?"
+    },
+    {
+      "zh": "这间屋子里，你最舍不得哪件普通的东西？我想听听你和它的故事。",
+      "en": "Which ordinary thing in this room means the most to you? I would like to hear your story about it."
+    },
+    {
+      "zh": "玩法   H",
+      "en": "Help  H"
+    },
+    {
+      "zh": "两封信，一处不可能的细节",
+      "en": "Two letters. One impossible detail."
+    },
+    {
+      "zh": "林写给父母 · 还没寄出",
+      "en": "From Lin to her parents · Unsent"
+    },
+    {
+      "zh": "你今天送来 · 冒充父母",
+      "en": "Delivered by you · Forged reply"
+    },
+    {
+      "zh": "昨晚，我把蓝杯子的缺口转向墙。\n\n——林念出自己原信中的一句。",
+      "en": "Last night I turned the chipped side of the blue cup toward the wall.\n\n— Lin quotes her unsent letter."
+    },
+    {
+      "zh": "把蓝杯子的缺口转向墙，并不等于它不存在。\n\n——署名：爸、妈",
+      "en": "Turning the chipped side of the blue cup toward the wall does not make it disappear.\n\n— Signed: Mum and Dad"
+    },
+    {
+      "zh": "原信还封在家里，父母不可能收到。可回信已经在回答它。",
+      "en": "Her letter is still sealed here. Her parents could not have received it. Yet this reply answers it."
+    },
+    {
+      "zh": "你知道：剧组用隐藏镜头看见了她写信，你照着内容代写回信。\n林不知道。她先怀疑的，是替她送信多年的你。",
+      "en": "Your secret: the crew watched her write through a hidden camera. You used that footage to forge the reply.\nLin does not know. Her first question is for you, her trusted friend."
+    },
+    {
+      "zh": "我明白了，回去回答林   Enter",
+      "en": "Answer Lin   Enter"
+    },
+    {
+      "zh": "先回到房间",
+      "en": "Back to the room"
+    },
+    {
+      "zh": "回到林面前，回答她",
+      "en": "Go back and answer Lin"
+    },
+    {
+      "zh": "先看看两封信",
+      "en": "Look at the two letters"
+    },
+    {
+      "zh": "回信，其实是我写的。",
+      "en": "I wrote the reply."
+    },
+    {
+      "zh": "我想听听你的往事。",
+      "en": "Tell me about your life."
+    },
+    {
+      "zh": "一起看看那个镜头？",
+      "en": "Look at that camera together?"
+    },
+    {
+      "zh": "试试电视会不会听你的？",
+      "en": "Will the TV follow your choice?"
+    },
+    {
+      "zh": "去看看门边的墙板？",
+      "en": "Look behind that wall panel?"
+    },
+    {
+      "zh": "你现在最担心什么？",
+      "en": "What worries you most now?"
+    },
+    {
+      "zh": "陪我走走？",
+      "en": "Walk with me?"
+    },
+    {
+      "zh": "我们现在走吧。",
+      "en": "Let's go now."
+    },
+    {
+      "zh": "这封信我还没寄。回信怎么就知道蓝杯子的事了？",
+      "en": "I haven't sent this letter yet. How does the reply know about the blue cup?"
+    },
+    {
+      "zh": "我们看看这个镜头会不会跟着你转，好吗？",
+      "en": "Shall we see whether this camera turns to follow you?"
+    },
+    {
+      "zh": "这边暂时过不去",
+      "en": "This way is blocked"
+    },
+    {
+      "zh": "这边过不去。给林让一点位置，再邀请她试一次。",
+      "en": "This way is blocked. Make room for Lin, then invite her to try again."
+    },
+    {
+      "zh": "林在等你让出一点位置。往旁边走一步，她会继续。",
+      "en": "Lin needs a little room. Step aside and she will continue."
+    },
+    {
+      "zh": "给林留出看清物品的视线，她会继续观察。",
+      "en": "Keep Lin's view clear so she can continue looking."
+    },
+    {
+      "zh": "试听音乐",
+      "en": "Play music"
+    },
+    {
+      "zh": "试听音效",
+      "en": "Play effects"
+    },
+    {
+      "zh": "试听人声",
+      "en": "Play voice"
+    },
+    {
+      "zh": "1 / 6  看懂信件\n对准茶几上的信封，按 E。",
+      "en": "1 / 6  The letters\nLook at the envelopes on the coffee table. Press E."
+    },
+    {
+      "zh": "2 / 6  回应林\n走近林按 E，说出你准备怎样解释。",
+      "en": "2 / 6  Answer Lin\nWalk up to Lin. Press E and give your explanation."
+    },
+    {
+      "zh": "3 / 6  一起检查镜头\n对准电视上方的镜头按 E，邀请林过去。",
+      "en": "3 / 6  The camera\nLook at the camera above the TV. Press E to invite Lin."
+    },
+    {
+      "zh": "4 / 6  试试电视\n对准电视按 E，先选预测，再一起验证。",
+      "en": "4 / 6  The television\nLook at the TV. Press E, choose a prediction, then test it."
+    },
+    {
+      "zh": "5 / 6  看穿这面墙\n前门旁有黄铜卡扣。按 E 打开，再请林观察。",
+      "en": "5 / 6  Behind the wall\nPress E at the brass catch by the front door. Invite Lin to look."
+    },
+    {
+      "zh": "5 / 6  确认出路\n走到前门金线，面向出口牌按 E。",
+      "en": "5 / 6  Check the way out\nStand on the gold line, face the exit sign, and press E."
+    },
+    {
+      "zh": "6 / 6  最后一场谈话\n和林谈事实、你的责任，以及出去后的第一步。",
+      "en": "6 / 6  One last conversation\nTalk about the facts, your responsibility, and a first step outside."
+    },
+    {
+      "zh": "6 / 6  一起告别\n等林跟到前门，面对出口牌按 E。",
+      "en": "6 / 6  Leave together\nWait for Lin at the front door. Face the exit sign and press E."
+    },
+    {
+      "zh": "让开一点位置\n往旁边走一步，林会继续过去。",
+      "en": "Give her room\nStep aside. Lin will continue walking."
+    },
+    {
+      "zh": "让林看清楚\n别挡在她和物品之间，观察会继续。",
+      "en": "Let her see\nKeep the space between Lin and the object clear."
+    },
+    {
+      "zh": "跟着林走\n她正在过去。给她留出通路。",
+      "en": "Walk with Lin\nShe is on her way. Keep her path clear."
+    },
+    {
+      "zh": "看镜头是否跟着转\n对准电视上方镜头按 E，林会换一个位置。",
+      "en": "Watch the camera turn\nFace the camera and press E. Lin will change position."
+    },
+    {
+      "zh": "电视 · 第一步\n对准屏幕按 E，启动刚才登记的预测。",
+      "en": "TV · Step one\nFace the screen and press E to start the prediction."
+    },
+    {
+      "zh": "电视 · 第二步\n再按 E，请林点播你预测的节目。",
+      "en": "TV · Step two\nPress E again. Lin asks for your predicted programme."
+    },
+    {
+      "zh": "电视 · 第三步\n再按 E，请她改口，观察画面是否改变。",
+      "en": "TV · Step three\nPress E again. She changes her mind; watch the screen."
+    },
+    {
+      "zh": "让她亲眼看看\n对准打开的墙板卡扣按 E，请林观察支架。",
+      "en": "Let her see for herself\nFace the open panel catch. Press E to inspect the supports."
+    },
+    {
+      "zh": "转身 · ",
+      "en": "Turn around · "
+    },
+    {
+      "zh": "两封信",
+      "en": "Two letters"
+    },
+    {
+      "zh": "墙板卡扣",
+      "en": "Panel catch"
+    },
+    {
+      "zh": "前门",
+      "en": "Front door"
+    },
+    {
+      "zh": "① 看懂两封信 · 沿标记走到茶几，对准信封按 E。",
+      "en": "Follow the marker to the coffee table. Look at the letters and press E."
+    },
+    {
+      "zh": "② 回应林 · 走近她按 E。回信是你写的，你准备怎么解释？",
+      "en": "Walk up to Lin and press E. You wrote the reply. What will you tell her?"
+    },
+    {
+      "zh": "这一局要做什么？",
+      "en": "What am I here to do?"
+    },
+    {
+      "zh": "这次节目与预测不符。重新选一个节目，再试一次。",
+      "en": "That did not match your prediction. Choose a programme and try again."
+    },
+    {
+      "zh": "先跟随画面里的标记，走到茶几，对准两封信按 E。看清矛盾后，再和林说话。",
+      "en": "Follow the marker to the coffee table. Face the letters and press E. Understand the contradiction, then talk to Lin."
+    },
+    {
+      "zh": "你知道的真相：这间住宅是一处节目片场。父母的扮演者已经离场。剧组用隐藏镜头偷看她写信，你照着内容冒充父母写回信。\n今天，是你最后一次扮演信使。",
+      "en": "Your secret: this home is a television set. The actors playing her parents have left. The crew watched her write through a hidden camera; you used that footage to forge their replies.\nToday is your last visit as the messenger."
+    },
+    {
+      "zh": "你是信使，也是林的朋友。你替剧组冒充她父母写回信。今天是最后一次送信，她发现了破绽。\n\n目标可以选：照常告别，或帮她查清真相，再让她自己决定是否离开。\n\n调查顺序：茶几上的两封信 → 电视上方的镜头 → 电视 → 前门墙板 → 出口 → 最后的谈话。屏幕左上会提示你当前这一步。\n\nWASD 移动，鼠标或方向键环顾，对准物品或林按 E。看到她准备行动，结束交谈让她走动。J 查看手记；H 随时回看玩法。\n\n聊天时直接打你想说的话。最终要回答她对真相、你的欺骗和门外生活的顾虑；收集东西不会自动替她作决定。",
+      "en": "You play the messenger, a long-time friend of Lin. You have been forging replies from her parents for the production crew. Today she notices a contradiction.\n\nYou can say goodbye as usual, or help her investigate and let her choose whether to leave.\n\nFollow the route: two letters on the coffee table → camera above the TV → television → panel by the front door → exit → final conversation. The guide shows your current step.\n\nWASD to move, mouse or arrow keys to look, E to interact. End the conversation when Lin is ready to walk. J opens notes; H opens this guide.\n\nType what you want to say. In the final conversation, address the truth, your deception, and a first step outside. Collecting objects does not make her choice for her."
+    },
+    {
+      "zh": "屋里的普通物品也有故事：对准沙发、书架、餐桌等按 E，听听她的回忆。",
+      "en": "Everyday objects hold stories too. Face the sofa, bookcase or dining table and press E to hear her memories."
+    },
+    {
+      "zh": "WASD 移动 · 鼠标或方向键环顾 · J 手记 · Esc 暂停",
+      "en": "WASD move · Mouse look · J notes · H help · Esc pause"
+    },
+    {
+      "zh": "我留意到的",
+      "en": "What I noticed"
+    },
+    {
+      "zh": "林亲眼确认的",
+      "en": "What Lin witnessed"
+    },
+    {
+      "zh": "出口路线",
+      "en": "The way out"
+    },
+    {
+      "zh": "现在结束拜访，会进入本次结局。还想继续调查的话，请选择回到现场。",
+      "en": "Ending the visit now leads to this run’s ending. To keep investigating, return to the room."
+    },
+    {
+      "zh": "确认结束这次拜访",
+      "en": "End this visit"
+    },
+    {
+      "zh": "确认选择",
+      "en": "Confirm your choice"
+    },
+    {
+      "zh": "鼠标或方向键环顾",
+      "en": "Mouse or arrow keys to look"
+    },
+    {
+      "zh": "把刚才看到的事连起来。",
+      "en": "Connect what we just witnessed."
+    },
+    {
+      "zh": "我愿意说清那些回信。",
+      "en": "I will explain the forged letters."
+    },
+    {
+      "zh": "说说出去后的第一步。",
+      "en": "Talk about our first step outside."
+    },
+    {
+      "zh": "现在走，还是留下？",
+      "en": "Leave now, or stay?"
+    },
+    {
+      "zh": "镜头跟着你转，电视跟着你的选择变，墙后还有布景支架。这些放在一起，说明有人一直在安排这里。我知道这里是片场，你可以按亲眼看到的来判断。",
+      "en": "The camera followed you, the television obeyed your choices, and there are set supports behind the wall. Together they show someone has been arranging this place. I know it is a set; judge that against what you saw yourself."
+    },
+    {
+      "zh": "我想和你一起离开，但决定权在你。你现在愿意跟我走吗？不愿意的话，我也会听你说。",
+      "en": "I want to leave with you, but the choice is yours. Would you like to come with me now? If not, I will listen."
+    },
+    {
+      "zh": "我不知道能不能找到他们。出去后，我愿意先陪你找一个能落脚的地方，再一起联系他们；任何时候你都可以重新决定。我不会替你选。你还担心哪一步？",
+      "en": "I do not know whether we can find them. Outside, I can help you find somewhere to stay, then try to contact them together. You can change your mind at any point. I will not choose for you. Which part still worries you?"
+    },
+    {
+      "zh": "6 / 6  把事实连起来\n告诉林：镜头、电视和墙后支架说明了什么。",
+      "en": "6 / 6  Connect the facts\nTell Lin what the camera, television and set supports mean together."
+    },
+    {
+      "zh": "6 / 6  说清你的责任\n回答林关于代写回信的问题，别把责任推给剧组。",
+      "en": "6 / 6  Own your part\nAnswer her questions about the forged letters. Do not shift the blame."
+    },
+    {
+      "zh": "6 / 6  谈谈门外\n承认未知，说清你愿意陪她走的第一步。",
+      "en": "6 / 6  Talk about outside\nAdmit what you do not know. Offer a concrete first step together."
+    },
+    {
+      "zh": "6 / 6  把选择交还给她\n问林是否现在愿意同行，听她自己的决定。",
+      "en": "6 / 6  Leave the choice to her\nAsk whether she wants to leave now. Listen to her decision."
+    },
+    {
+      "zh": "5 / 6  请林看看墙后\n走近林按 E，邀请她检查打开的墙板。",
+      "en": "5 / 6  Let Lin see behind it\nApproach Lin and press E. Invite her to inspect the open panel."
+    },
+    {
+      "zh": "5 / 6  看穿这面墙\n走进前门门厅，抬头看台灯上方的黄铜卡扣，按 E 打开。",
+      "en": "5 / 6  Behind the wall\nEnter the front-door alcove. Look above the lamp and press E at the brass catch."
+    },
+    {
+      "zh": "调查完成\n林正在回到客厅。你可以继续找下一处线索。",
+      "en": "Investigation complete\nLin is returning to the living room. You can look for the next clue."
+    },
+    {
+      "zh": "走吧。这次，我想自己看看门外。",
+      "en": "Let's go. This time I want to see outside for myself."
+    },
+    {
+      "zh": "我看见墙后的东西了。可出去以后呢？",
+      "en": "I saw what was behind the wall. But what happens after we leave?"
+    },
+    {
+      "zh": "镜头和电视都不对劲。我们接着看吧。",
+      "en": "The camera and the TV are both wrong. Let's keep looking."
+    },
+    {
+      "zh": "那个镜头真的跟着我转了。你还知道什么？",
+      "en": "That camera really followed me. What else do you know?"
+    },
+    {
+      "zh": "刚才的话我记着。你还想说什么？",
+      "en": "I remember what you said. What else is on your mind?"
+    },
+    {
+      "zh": "林已经走到门边。准备好了，就和她一起走出去。\n\n你也可以返回房间继续交谈。",
+      "en": "Lin is here at the door. When you are ready, walk out together.\n\nYou can also return to the room to keep talking."
+    },
+    {
+      "zh": "林已经选择与你同行。收起这个页面，站到门前的金色线边，给她留一点位置。她走过来后，再面对出口牌按 E。",
+      "en": "Lin has chosen to leave with you. Close this page, stand by the gold line at the door, and leave her a little space. Once she joins you, face the exit sign and press E."
+    }
+  ]
+}

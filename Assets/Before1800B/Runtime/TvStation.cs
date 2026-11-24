@@ -110,7 +110,7 @@ namespace Before1800.PartB
             PredictedProgram = program;
             Phase = TvPhase.Predicted;
             Show(TvProgram.None);
-            reason = "已锁定预测：" + LabelFor(program) + "（" + EventIdFor(program) + "）。";
+            reason = "已锁定预测：" + LabelFor(program) + "。";
             return true;
         }
 
@@ -221,7 +221,7 @@ namespace Before1800.PartB
                 screenMaterial.EnableKeyword("_EMISSION");
                 screenMaterial.SetColor("_EmissionColor", program == TvProgram.None ? Color.black : tone * 1.6f);
             }
-            if (caption) caption.text = program == TvProgram.None ? "TV  STANDBY" : LabelFor(program).ToUpperInvariant();
+            if (caption) caption.text = program == TvProgram.None ? "待机" : LabelFor(program).ToUpperInvariant();
         }
 
         static TvProgram DefaultOnAir(TvProgram predicted)

@@ -58,7 +58,17 @@ namespace Before1800.Home
                 animator.SetFloat(StrideRate, Mathf.Clamp(speed / AuthoredSpeed, .35f, 2f));
         }
 
-        void LateUpdate() => expression?.Animate(Time.timeScale > 0f ? Time.deltaTime : 0f, stepping,
+        float ExpressionStep
+        {
+            get
+            {
+                if(Time.timeScale>0f)return Time.deltaTime;
+                var scene=world ? world.GetComponent<PartBScene>() : null;
+                return scene && scene.DialogueOpen && !scene.MenuOpen ? (Time.captureDeltaTime>0?Time.captureDeltaTime:Time.unscaledDeltaTime) : 0f;
+            }
+        }
+
+        void LateUpdate() => expression?.Animate(ExpressionStep, stepping,
             world ? world.DesiredFacing : Vector3.zero);
 
         void OnDisable() => expression?.RestorePose();

@@ -8,6 +8,25 @@ namespace Before1800.Home.Editor
 {
     public static class ResidencePlayerBuild
     {
+        [MenuItem("Before 18/Build residence Mac player")]
+        public static void BuildMac()
+        {
+            string project = Path.GetDirectoryName(Application.dataPath);
+            string output = Path.Combine(project, "Builds", "Before1800-Mac");
+            Directory.CreateDirectory(output);
+            var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions {
+                scenes = new[] { "Assets/Before1800Home/PartB_Residence.unity" },
+                locationPathName = Path.Combine(output, "Before1800.app"),
+                target = BuildTarget.StandaloneOSX
+            });
+            if (report.summary.result != BuildResult.Succeeded)
+                throw new BuildFailedException("Mac build failed: " + report.summary.result);
+            File.Copy(Path.Combine(project, "docs/MiSide-Credits.txt"), Path.Combine(output, "MiSide-Credits.txt"), true);
+            File.Copy(Path.Combine(Application.dataPath, "Before1800B/SourceHanSans-LICENSE.txt"),
+                Path.Combine(output, "SourceHanSans-LICENSE.txt"), true);
+            Debug.Log("Mac playtest built: " + output);
+        }
+
         [MenuItem("Before 18/Build residence Windows player")]
         public static void Build()
         {

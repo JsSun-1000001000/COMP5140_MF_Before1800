@@ -23,6 +23,8 @@ namespace Before1800.PartB
         readonly Collider[] routeHits = new Collider[24];
         Quaternion closedRotation;
         bool hasClosedRotation;
+        Transform productionCaption;
+        bool controlAccessibleFromFoyer;
 
         public bool DoorOpen { get; private set; }
         public Transform DoorControl => doorControl;
@@ -39,6 +41,7 @@ namespace Before1800.PartB
         public void ResetDoor()
         {
             DoorOpen = false;
+            if(productionCaption)productionCaption.gameObject.SetActive(false);
             if (!doorHinge) return;
             if (!hasClosedRotation)
             {
@@ -57,13 +60,14 @@ namespace Before1800.PartB
             if (!CanOpenDoor(view)) return false;
             doorHinge.localRotation = closedRotation * Quaternion.Euler(0f, openAngle, 0f);
             DoorOpen = true;
+            if(productionCaption)productionCaption.gameObject.SetActive(true);
             Physics.SyncTransforms();
             return true;
         }
 
         bool AtDoorControl(Transform view)
         {
-            return IsAvailable && view && !InRestrictedArea(view.position) &&
+            return IsAvailable && view && (controlAccessibleFromFoyer || !InRestrictedArea(view.position)) &&
                 InView(view.position, view.forward, doorControl, 2f, 35f, view.GetComponentInParent<CharacterController>()?.transform);
         }
 
@@ -151,11 +155,11 @@ namespace Before1800.PartB
             station.setBrace = brace.GetComponent<Renderer>();
             Transform mark = Box(root, "Production mark", new Vector3(.40f, 1.66f, 2.09f), new Vector3(.88f, .44f, .08f), steel);
             station.setMark = mark.GetComponent<Renderer>();
-            Caption(root, "SET 04 / B", new Vector3(.40f, 1.67f, 2.041f), .027f);
+            Caption(root, "布景 04 · B 面", new Vector3(.40f, 1.67f, 2.041f), .027f);
             station.routeProbe = Node(root, "route_probe", new Vector3(.04f, .025f, .84f));
             station.exitPoint = Node(root, "Route clearance endpoint", new Vector3(.04f, .025f, 1.73f));
             station.routeSign = Box(root, "Route check plate", new Vector3(.54f, 1.18f, 2.08f), new Vector3(.94f, .30f, .09f), panel);
-            Caption(root, "CHECK ROUTE", new Vector3(.54f, 1.18f, 2.026f), .022f);
+            Caption(root, "检查通道", new Vector3(.54f, 1.18f, 2.026f), .022f);
             // Floor paint is flush and has no blocking collider.
             Transform paintStrip = Box(root, "Route probe floor mark", new Vector3(.04f, .012f, .84f), new Vector3(.85f, .014f, .10f), gold);
             paintStrip.GetComponent<Collider>().enabled = false;
@@ -163,6 +167,41 @@ namespace Before1800.PartB
             station.restrictedArea.isTrigger = true;
             station.restrictedArea.center = new Vector3(0f, 1f, 1.19f);
             station.restrictedArea.size = new Vector3(2.23f, 2.8f, 2.34f);
+            return station;
+        }
+
+        // A shallow removable panel beside the apartment's existing front door.
+        // Its short route lies on the authored foyer NavMesh; no teleport or fabricated proof.
+        internal static SetBackStation BuildResidence(Transform parent, Transform home, Material cream, Material dark, Material gold)
+        {
+            var root = Node(parent, "Removable set panel / final departure", Vector3.zero);
+            var station = root.gameObject.AddComponent<SetBackStation>();
+            station.returnPoint = home;
+            station.controlAccessibleFromFoyer = true;
+            // Swing away from the foyer so the open leaf cannot cover its own catch.
+            station.openAngle = 105f;
+            station.doorHinge = Node(root, "Panel hinge", new Vector3(2.31f, 0f, 4.25f));
+            Carve(Box(station.doorHinge, "Painted false wall", new Vector3(-.48f, 1.2f, 0f), new Vector3(.96f, 2.3f, .045f), cream));
+            // The original right-hand catch was hidden behind the apartment mirror/wall.
+            // Mount it above the lamp on the exposed left edge, reachable from the foyer.
+            station.doorControl = Box(root, "Brass release catch", new Vector3(1.43f, 1.72f, 4.15f), new Vector3(.14f, .22f, .055f), gold);
+            station.observationPoint = Node(root, "e5_residence_observe", new Vector3(.70f, .02f, 3.05f));
+            station.setBrace = Box(root, "Unpainted set support", new Vector3(1.43f, 1.2f, 4.38f), new Vector3(.09f, 1.8f, .10f), gold).GetComponent<Renderer>();
+            station.setBrace.transform.localRotation = Quaternion.Euler(0f, 0f, -12f);
+            station.setMark = Box(root, "SET 04 production plate", new Vector3(1.68f, 1.5f, 4.36f), new Vector3(.26f, .38f, .04f), dark).GetComponent<Renderer>();
+            station.productionCaption = Caption(root, "布景 04 · B 面", new Vector3(1.68f, 1.5f, 4.325f), .006f).transform;
+            Caption(root, "松开卡扣", new Vector3(1.43f, 1.93f, 4.11f), .006f);
+            station.routeProbe = Node(root, "Foyer route checkpoint", new Vector3(.50f, .02f, 3.25f));
+            station.exitPoint = Node(root, "Front door threshold", new Vector3(.50f, .02f, 4.06f));
+            station.routeSign = Box(root, "Exit clearance plate", new Vector3(.78f, 1.48f, 4.4f), new Vector3(.24f, .12f, .02f), dark);
+            Caption(root, "出口", new Vector3(.78f, 1.48f, 4.367f), .006f);
+            var strip = Box(root, "Route checkpoint tape", new Vector3(.50f, .012f, 3.25f), new Vector3(.8f, .012f, .09f), gold);
+            strip.GetComponent<Collider>().enabled = false;
+            station.restrictedArea = root.gameObject.AddComponent<BoxCollider>();
+            station.restrictedArea.isTrigger = true;
+            station.restrictedArea.center = new Vector3(.50f, 1f, 3.90f);
+            station.restrictedArea.size = new Vector3(1.2f, 2.8f, 1.8f);
+            station.ResetDoor();
             return station;
         }
 
@@ -194,16 +233,17 @@ namespace Before1800.PartB
             obstacle.carving = true;
         }
 
-        static void Caption(Transform parent, string caption, Vector3 position, float size)
+        static TextMesh Caption(Transform parent, string caption, Vector3 position, float size)
         {
             var label = Node(parent, caption, position).gameObject.AddComponent<TextMesh>();
-            label.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            label.font = PlayerUIFont.Get();
             label.GetComponent<Renderer>().sharedMaterial = label.font.material;
             label.anchor = TextAnchor.MiddleCenter;
             label.alignment = TextAlignment.Center;
             label.fontSize = 64;
             label.characterSize = size;
             label.text = caption;
+            return label;
         }
     }
 }

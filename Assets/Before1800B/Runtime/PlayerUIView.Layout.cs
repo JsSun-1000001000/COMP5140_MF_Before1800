@@ -66,12 +66,12 @@ namespace Before1800.PartB
             notice = Label(noticePlate, "Feedback", "", 17, Soft);
 
             intro = FillNode(canvasRect, "Opening");
-            Shade(intro, "Curtain", new Color32(30, 23, 25, 70), new Color32(30, 23, 25, 7), false);
-            introPlate = Panel(intro, "Opening card", Plate);
+            Shade(intro, "Curtain", new Color32(20, 29, 32, 250), new Color32(28, 29, 30, 15), false);
+            introPlate = Panel(intro, "Opening card", new Color32(20,29,32,210));
             introBand = Panel(introPlate, "Opening accent", Apricot);
             introPlace = Label(introPlate, "Location", "", 16, Apricot);
             introTitle = Label(introPlate, "Title", "18 点之前", 52, Cream);
-            introSynopsis = Label(introPlate, "Story", "林以为这里是自己的家。\n你知道这间屋子是片场，也曾帮剧组隐瞒真相。", 19, Cream);
+            introSynopsis = Label(introPlate, "Story", "你替林送了很多年的信，也伪造了父母的回信。\n今天，一封没有寄出的原信，戳破了这个秘密。", 19, Cream);
             introGoal = Label(introPlate, "Objective", "", 16, Soft);
             start = MakeButton(introPlate, "StartExploring", "开始探索   Enter", () => flow.Begin(), true);
             introControls = Label(introPlate, "Controls", "WASD 移动   鼠标环顾", 15, Soft, TextAnchor.MiddleRight);
@@ -92,7 +92,7 @@ namespace Before1800.PartB
             lineScroll.movementType = ScrollRect.MovementType.Clamped;
             lineScroll.scrollSensitivity = 34f;
             lineScroll.viewport = viewport;
-            line = Label(viewport, "SpokenLine", "", 26, Cream, TextAnchor.UpperLeft);
+            line = Label(viewport, "SpokenLine", "", 21, Cream, TextAnchor.UpperLeft);
             lineScroll.content = line.rectTransform;
             talkNotice = Label(talkBand, "DialogueFeedback", "", 15, Soft);
             for (int i = 0; i < talkChoices.Length; i++)
@@ -125,12 +125,14 @@ namespace Before1800.PartB
             modalBand = Panel(modalPlate, "Page marker", Apricot);
             modalStamp = Label(modalPlate, "ModalTime", "", 18, Apricot);
             modalTitle = Label(modalPlate, "ModalTitle", "", 36, Cream);
-            modalBody = Label(modalPlate, "ModalDescription", "", 19, Soft, TextAnchor.UpperLeft);
+            modalBody = Label(modalPlate, "ModalDescription", "", 16, Soft, TextAnchor.UpperLeft);
             for (int i = 0; i < modalChoices.Length; i++)
             {
                 int index = i;
                 modalChoices[i] = MakeButton(modalPlate, "MenuChoice"+(i+1), "", () => Choose(index), i==0);
             }
+            BuildExperienceControls();
+            BuildGuideControls();
         }
 
         private InputField MakeInput(RectTransform parent)
@@ -213,7 +215,8 @@ namespace Before1800.PartB
             label.verticalOverflow = VerticalWrapMode.Overflow;
             label.lineSpacing = 1.08f;
             label.raycastTarget = false;
-            label.text = value;
+            label.text = GameLanguage.T(value);
+            labelSources[label]=value;
             return label;
         }
 
@@ -237,7 +240,7 @@ namespace Before1800.PartB
             stroke.effectDistance = new Vector2(1f,-1f);
             var text = Label(r, "Label", value, 17, primary ? Ink : Cream, TextAnchor.MiddleCenter);
             Fill(text.rectTransform, 7f, 1f);
-            button.onClick.AddListener(() => { act(); Refresh(); });
+            button.onClick.AddListener(() => { scene.GetComponent<ResidenceAudio>()?.PlayCue("interact"); act(); Refresh(); });
             return new Control { Node = r, Button = button, Label = text };
         }
 
@@ -266,22 +269,24 @@ namespace Before1800.PartB
             At(noticePlate,margin,height-80,noticeWidth,53);
             At(notice.rectTransform,16,0,noticeWidth-32,53);
 
-            float cardWidth = Mathf.Min(467,width-margin*2);
+            float cardWidth = Mathf.Min(540,width-margin*2);
             float storyHeight=Mathf.Max(64,FittedHeight(introSynopsis,cardWidth-58));
             float goalY=125+storyHeight+4;
             float goalHeight=Mathf.Max(40,FittedHeight(introGoal,cardWidth-58));
             float beginY=goalY+goalHeight+14;
             float introHeight=beginY+67;
-            At(introPlate,Mathf.Min(margin*1.5f,width-cardWidth-margin),Mathf.Max(12,height-introHeight-42),cardWidth,introHeight);
+            At(introPlate,Mathf.Min(margin*1.5f,width-cardWidth-margin),Mathf.Max(85,(height-introHeight)*.5f),cardWidth,introHeight);
             At(introBand,0,0,4,introHeight);
             At(introPlace.rectTransform,28,18,cardWidth-56,28);
             At(introTitle.rectTransform,26,44,cardWidth-52,72);
             At(introSynopsis.rectTransform,29,125,cardWidth-58,storyHeight);
             At(introGoal.rectTransform,29,goalY,cardWidth-58,goalHeight);
             At(start.Node,29,beginY,Mathf.Min(208,cardWidth-58),44);
-            Active(introControls.rectTransform,cardWidth>=405);
+            Active(introControls.rectTransform,false);
             At(introControls.rectTransform,245,beginY,cardWidth-273,44);
 
+            LayoutExperienceControls(width,height);
+            LayoutGuideControls(width,height);
             LayoutDialogue(width,height);
             float bookWidth=Mathf.Min(490,width-margin*2);
             float bookHeight=Mathf.Min(550,height-92);
@@ -304,7 +309,7 @@ namespace Before1800.PartB
             }
             At(closeBook.Node,x,bookHeight-64,158,42);
 
-            float modalWidth=Mathf.Min(450,width-margin*2);
+            float modalWidth=Mathf.Min(600,width-margin*2);
             int modalCount = modal.gameObject.activeSelf ? choiceCount : 1;
             float bodyHeightForModal=string.IsNullOrEmpty(modalBody.text) ? 0 : FittedHeight(modalBody,modalWidth-52)+14;
             float actionTop=114+bodyHeightForModal;
@@ -320,14 +325,15 @@ namespace Before1800.PartB
 
         private void LayoutDialogue(float width,float height)
         {
-            float inside=Mathf.Min(width-44,1060);
-            float left=(width-inside)*.5f;
-            float y=16;
+            float cardWidth=Mathf.Min(width-48,940);
+            float inside=cardWidth-48;
+            float left=24;
+            float y=10;
             At(speakerDash,left,y+15,24,2);
             At(speaker.rectTransform,left+35,y,inside-35,32);
-            y+=36;
-            float lineHeight=Mathf.Max(41, FittedHeight(line,inside));
-            float visibleHeight=Mathf.Min(lineHeight,Mathf.Clamp(height*.13f,72,108));
+            y+=30;
+            float lineHeight=Mathf.Max(30, FittedHeight(line,inside));
+            float visibleHeight=Mathf.Min(lineHeight,Mathf.Clamp(height*.12f,68,90));
             bool overflow=lineHeight>visibleHeight+1;
             Active(readEarlier.Node,overflow);
             Active(readLater.Node,overflow);
@@ -360,7 +366,7 @@ namespace Before1800.PartB
                 {
                     var choice=talkChoices[i];
                     float scale = canvasRect.GetComponent<Canvas>().scaleFactor;
-                    choice.Label.fontSize = Mathf.Clamp(Mathf.CeilToInt(15f / Mathf.Max(scale,.1f)), 18, 23);
+                    choice.Label.fontSize = 16;
                     float w=Mathf.Min(inside,Mathf.Max(110,choice.Label.preferredWidth+30));
                     if(offset>0 && offset+w>inside){y+=47;offset=0;}
                     At(choice.Node,left+offset,y,w,39);
@@ -373,9 +379,9 @@ namespace Before1800.PartB
             At(input.GetComponent<RectTransform>(),left,y,inputWidth,39);
             At(send.Node,left+inputWidth+9,y,sendWidth,39);
             At(exitTalk.Node,left+inside-leaveWidth,y,leaveWidth,39);
-            float matteHeight=y+59;
-            At(talkBand,0,height-matteHeight,width,matteHeight);
-            At(talkRule,0,0,width,1);
+            float matteHeight=y+51;
+            At(talkBand,(width-cardWidth)*.5f,height-matteHeight-16,cardWidth,matteHeight);
+            At(talkRule,0,0,cardWidth,1);
         }
 
         private void ScrollLine(int direction)

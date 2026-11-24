@@ -188,7 +188,7 @@ namespace Before1800.PartB.Tests
             Assert.IsFalse(scene.State.ClockBaselineSeen || scene.State.ClockSoloReplaySeen || scene.State.ClockRemoteTaken ||
                 scene.State.ClockInvited || scene.State.ClockWitnessed);
             Assert.IsNull(scene.State.ReadSnapshot().clock_rehearsal);
-            interactions.Begin();
+            for(int page=0;page<4;page++) interactions.Begin();
             TakeTableRemote();
             CheckMainStoryUntouched();
         }
