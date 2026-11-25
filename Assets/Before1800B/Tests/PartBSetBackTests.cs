@@ -1,11 +1,17 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Runtime.Serialization.Json;
+using System.Text;
 using NUnit.Framework;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 
 namespace Before1800.PartB.Tests
 {
@@ -60,6 +66,103 @@ namespace Before1800.PartB.Tests
             Assert.IsNotNull(scene);
             Assert.IsNotNull(World.Station);
             scene.ToggleIntroOff();
+        }
+
+        private sealed class UnreachableGatewayProxy : IWebProxy
+        {
+            private readonly Uri gateway;
+            public UnreachableGatewayProxy(Uri gateway) { this.gateway = gateway; }
+            public ICredentials Credentials { get; set; }
+            public bool IsBypassed(Uri destination) => destination.Authority != gateway.Authority;
+            public Uri GetProxy(Uri destination) => IsBypassed(destination) ? destination : new Uri("http://127.0.0.1:1/");
+        }
+
+        private static IEnumerator WaitForGateway(Func<bool> completed, string expectation)
+        {
+            float deadline = Time.realtimeSinceStartup + 10f;
+            while (!completed() && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.IsTrue(completed(), expectation);
+        }
+
+        private static void Respond(HttpListenerContext exchange, string json)
+        {
+            var bytes = Encoding.UTF8.GetBytes(json);
+            exchange.Response.ContentType = "application/json";
+            exchange.Response.ContentLength64 = bytes.Length;
+            exchange.Response.Close(bytes, false);
+        }
+
+        [UnityTest]
+        public IEnumerator LocalGatewayReceivesPlayerTurnWhenTheDefaultProxyRejectsLoopback()
+        {
+            var reservation = new TcpListener(IPAddress.Loopback, 0);
+            reservation.Start();
+            int port = ((IPEndPoint)reservation.LocalEndpoint).Port;
+            reservation.Stop();
+            var address = new Uri("http://127.0.0.1:" + port + "/");
+            using (var server = new HttpListener())
+            {
+                server.Prefixes.Add(address.AbsoluteUri);
+                server.Start();
+                const string setting = "BEFORE1800_LIN_GATEWAY";
+                string originalGateway = Environment.GetEnvironmentVariable(setting);
+                var originalProxy = WebRequest.DefaultWebProxy;
+                try
+                {
+                    Environment.SetEnvironmentVariable(setting, address.AbsoluteUri);
+                    WebRequest.DefaultWebProxy = new UnreachableGatewayProxy(address);
+                    var health = server.GetContextAsync();
+                    yield return EditorSceneManager.LoadSceneAsyncInPlayMode("Assets/Before1800Home/PartB_Residence.unity",
+                        new LoadSceneParameters(LoadSceneMode.Single));
+                    yield return null;
+                    scene = UnityEngine.Object.FindObjectOfType<PartBScene>();
+                    var adapter = scene.GetComponent<PartCDialogue>();
+                    yield return WaitForGateway(() => health.IsCompleted, "The game must contact its local health endpoint directly.");
+                    var check = health.GetAwaiter().GetResult();
+                    Assert.AreEqual("/health", check.Request.Url.AbsolutePath);
+                    Respond(check, "{\"ready\":true}");
+                    yield return WaitForGateway(() => adapter.Ready, "The editor player did not accept the gateway health reply.");
+
+                    const string playerLine = "这封信寄出去了吗？";
+                    const string linLine = "它一直放在茶几上。";
+                    var incoming = server.GetContextAsync();
+                    var flow = scene.GetComponent<GreyboxHUD>().Flow;
+                    scene.ToggleIntroOff();
+                    World.ViewCamera.transform.LookAt(World.Lin.position + Vector3.up * 1.38f);
+                    flow.Use();
+                    yield return null;
+                    var view = scene.GetComponent<PlayerUIView>();
+                    var field = view.GetComponentInChildren<InputField>();
+                    Assert.IsNotNull(field, "Facing Lin should open the residence dialogue input.");
+                    field.text = playerLine;
+                    field.onSubmit.Invoke(field.text);
+                    yield return WaitForGateway(() => incoming.IsCompleted, "The local gateway never received the player's turn.");
+                    var exchange = incoming.GetAwaiter().GetResult();
+                    Assert.AreEqual("POST", exchange.Request.HttpMethod);
+                    Assert.AreEqual("/npc/decide", exchange.Request.Url.AbsolutePath);
+                    var decoder = new DataContractJsonSerializer(typeof(PartCDialogue.Input));
+                    var turn = (PartCDialogue.Input)decoder.ReadObject(exchange.Request.InputStream);
+                    Assert.AreEqual(playerLine, turn.player_input);
+                    Assert.AreEqual("user", turn.trigger);
+                    var answer = new PartCDialogue.Output {
+                        session_id = turn.session_id, request_id = turn.request_id, turn_id = turn.turn_id,
+                        state_version = turn.state_version, model = "local-test", provider = "local-test",
+                        decision = new PartCDialogue.Decision { dialogue = linLine, action = "reply", concern_status = "keep" }
+                    };
+                    Respond(exchange, JsonUtility.ToJson(answer));
+                    yield return WaitForGateway(() => flow.Line == linLine, "Lin's accepted reply did not appear in the dialogue.");
+                    yield return null;
+                    Assert.IsTrue(view.GetComponentsInChildren<Text>().Any(label => label.text == linLine));
+                    Assert.AreEqual(PlayerScreen.Talk, flow.Screen);
+                    Assert.IsTrue(flow.CanSend);
+                    Assert.IsFalse(flow.Closing);
+                }
+                finally
+                {
+                    WebRequest.DefaultWebProxy = originalProxy;
+                    Environment.SetEnvironmentVariable(setting, originalGateway);
+                }
+            }
         }
 
         // Opt in explicitly because this exercises the real, metered provider.

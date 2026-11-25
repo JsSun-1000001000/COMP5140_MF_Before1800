@@ -1,6 +1,26 @@
 {
   "entries": [
     {
+      "zh": "无法连接本机对话服务",
+      "en": "The local dialogue service could not be reached."
+    },
+    {
+      "zh": "等待本机对话服务超时",
+      "en": "The local dialogue service took too long to respond."
+    },
+    {
+      "zh": "本机对话服务地址无效",
+      "en": "The local dialogue service address is invalid."
+    },
+    {
+      "zh": "回复与本轮请求不匹配",
+      "en": "The response did not match this turn."
+    },
+    {
+      "zh": "动作或顾虑提议超出本轮范围",
+      "en": "The proposed response could not be applied to this turn."
+    },
+    {
       "zh": "暂时没有收到回复。你的话还在，可以重试或先走走。",
       "en": "No reply came through. Your words are saved; try again or take a walk."
     },
@@ -887,6 +907,10 @@
     {
       "zh": "结束交谈   Esc",
       "en": "Back  Esc"
+    },
+    {
+      "zh": "继续探索   Esc",
+      "en": "Back to exploring   Esc"
     },
     {
       "zh": "暂停",
@@ -1793,8 +1817,8 @@
       "en": "Your secret: this home is a television set. The actors playing her parents have left. The crew watched her write through a hidden camera; you used that footage to forge their replies.\nToday is your last visit as the messenger."
     },
     {
-      "zh": "你是信使，也是林的朋友。你替剧组冒充她父母写回信。今天是最后一次送信，她发现了破绽。\n\n目标可以选：照常告别，或帮她查清真相，再让她自己决定是否离开。\n\n调查顺序：茶几上的两封信 → 电视上方的镜头 → 电视 → 前门墙板 → 出口 → 最后的谈话。屏幕左上会提示你当前这一步。\n\nWASD 移动，鼠标或方向键环顾，对准物品或林按 E。看到她准备行动，结束交谈让她走动。J 查看手记；H 随时回看玩法。\n\n聊天时直接打你想说的话。最终要回答她对真相、你的欺骗和门外生活的顾虑；收集东西不会自动替她作决定。",
-      "en": "You play the messenger, a long-time friend of Lin. You have been forging replies from her parents for the production crew. Today she notices a contradiction.\n\nYou can say goodbye as usual, or help her investigate and let her choose whether to leave.\n\nFollow the route: two letters on the coffee table → camera above the TV → television → panel by the front door → exit → final conversation. The guide shows your current step.\n\nWASD to move, mouse or arrow keys to look, E to interact. End the conversation when Lin is ready to walk. J opens notes; H opens this guide.\n\nType what you want to say. In the final conversation, address the truth, your deception, and a first step outside. Collecting objects does not make her choice for her."
+      "zh": "你是信使，也是林的朋友。你替剧组冒充她父母写回信。今天是最后一次送信，她发现了破绽。\n\n目标可以选：照常告别，或帮她查清真相，再让她自己决定是否离开。\n\n调查顺序：茶几上的两封信 → 电视上方的镜头 → 电视 → 前门墙板 → 出口 → 最后的谈话。屏幕左上会提示你当前这一步。\n\nWASD 移动，鼠标或方向键环顾，对准物品或林按 E。林可以自己结束谈话，或说完后带你去看。按 Esc 可以先离开。J 查看手记；H 随时回看玩法。\n\n聊天时直接打你想说的话。最终要回答她对真相、你的欺骗和门外生活的顾虑；收集东西不会自动替她作决定。",
+      "en": "You play the messenger, a long-time friend of Lin. You have been forging replies from her parents for the production crew. Today she notices a contradiction.\n\nYou can say goodbye as usual, or help her investigate and let her choose whether to leave.\n\nFollow the route: two letters on the coffee table → camera above the TV → television → panel by the front door → exit → final conversation. The guide shows your current step.\n\nWASD to move, mouse or arrow keys to look, E to interact. Lin can end a conversation herself or set off after her last line. Press Esc to leave earlier. J opens notes; H opens this guide.\n\nType what you want to say. In the final conversation, address the truth, your deception, and a first step outside. Collecting objects does not make her choice for her."
     },
     {
       "zh": "屋里的普通物品也有故事：对准沙发、书架、餐桌等按 E，听听她的回忆。",

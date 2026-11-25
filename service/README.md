@@ -4,6 +4,8 @@ For the current Unity 2021.3 / DeepSeek demo, follow [Part C 本地演示](../do
 
 For a built residence player, run `service\Play-With-Lin.cmd "path\to\Before1800.exe"` from the repository root. The launcher uses a private input prompt if the environment key is missing or rejected, locates an available DeepSeek chat model and starts a loopback gateway for this play session. It closes the gateway when the game exits. To distribute the launcher with a build, place `Play-With-Lin.cmd` beside `Before1800.exe`. Copy `play_with_lin.py`, `requirements.txt`, `app/*.py` and `prompts/lin_system.txt` to their corresponding paths inside a sibling `service` folder. Opening the executable directly starts with local topics. [住宅试玩说明](../docs/PartB_住宅试玩.md)
 
+In the residence, `end_conversation` displays Lin's last line and returns control to the player. A client that sends `allow_resolved_closing: true` can record an eligible concern in that same turn. During a conversation break, `allow_break_followup: true` permits one concrete clarifying question about new information. Unity grants that opportunity once and keeps the input open for the answer. Both capabilities default to false.
+
 The sections below describe the original E1 client and its configuration.
 
 This is the real HTTP integration for Lin's decisions. The default application calls an OpenAI-compatible `POST /chat/completions` endpoint. It has **no automatic mock or canned-response fallback**. At delivery, `.env` deliberately has no API key and no model. `/health` and `/npc/decide` therefore return HTTP 503 until configured.

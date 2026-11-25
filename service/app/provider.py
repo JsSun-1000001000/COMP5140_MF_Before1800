@@ -17,22 +17,52 @@ from .tracing import TraceRecorder
 def repair_contract(request: DecisionRequest) -> str:
     """Use trusted schema/snapshot facts, never reflect untrusted exception messages."""
     context = request.context
+    resolution_actions = ("reply or end_conversation"
+                          if context.allow_resolved_closing and "end_conversation" in context.allowed_actions
+                          else "reply")
+    movement_rule = (
+        "This client closes the conversation after inspect, follow, withdraw or agree_escape. "
+        "When acting now, end the line with a statement about Lin's next step. If she actually "
+        "needs an answer first, use reply when permitted and ask her question. "
+        if context.world_actions_close_dialogue else ""
+    )
+    break_rule = ""
+    if context.conversation_needs_break:
+        break_rule = (
+            "conversation_needs_break=true. First check whether this turn earned a concern resolution. "
+            "Record it with an eligible action if so. Otherwise choose a justified action or answer "
+            "briefly and close. "
+        )
+        if context.allow_break_followup:
+            break_rule += (
+                "One reply/keep is permitted only for genuinely new, incomplete information. Ask the "
+                "one concrete question Lin still wants answered. Choose the most important missing "
+                "detail and drop any other question. End with ? or ？ and ask no earlier question. "
+            )
+        else:
+            break_rule += "A plain reply/keep is invalid this turn. "
     return (
         "Repair the previous response as ONE JSON object with exactly six required keys. "
         "EXACT TARGET RULES: action=reply => target_id=null ALWAYS, even if the dialogue mentions an object. "
-        "action=follow => target_id=player; inspect => one listed target; withdraw/agree_escape => target_id=null. "
+        "action=follow => target_id=player; inspect => one listed target; "
+        "withdraw/agree_escape/end_conversation => target_id=null. "
         "EXACT CONCERN RULES: keep => concern_id=null AND basis_turn_id=null ALWAYS. "
-        "resolved => action=reply AND target_id=null AND concern_id=one currently open eligible C1/C2/C3 "
+        "resolved => action=" + resolution_actions + " AND target_id=null AND concern_id=one currently open eligible C1/C2/C3 "
         "AND basis_turn_id=" + request.turn_id + ". "
-        "NEVER combine resolved with agree_escape. If this turn resolves C3, output reply/resolved/C3, "
-        "not agree_escape; consent can occur on a later turn when the snapshot has all concerns resolved. "
+        "NEVER combine resolved with agree_escape. If this turn resolves C3, record C3 now; "
+        "consent can occur on a later turn when the snapshot has all concerns resolved. "
         "Only select actions from " + json.dumps(context.allowed_actions) + ". "
+        "When end_conversation is available: first record an eligible concern genuinely resolved by "
+        "this turn, including new concrete accountability for C2. If Lin already asked for space "
+        "and the player only repeats the same demand for forgiveness or a decision, honor her boundary "
+        "with end_conversation now. Its last sentence must be a statement, even in English; "
+        "rewrite a final question (including one ending in ? or ？ inside quotes) as Lin's decision. "
         "Only select targets from " + json.dumps(context.known_targets) + ". "
         "Current concerns: " + json.dumps(context.concerns.model_dump()) + ". "
         "Current witnessed facts: " + json.dumps(context.verified_evidence) + "; route_confirmed="
         + str(context.route_confirmed) + ". C1 needs 3 physical facts including E5; C3 needs the route. "
         "The original player's words and original turn remain the only basis for resolution. "
-        "This is a repair of that response, not a new player turn."
+        "This is a repair of that response, not a new player turn. " + movement_rule + break_rule
     )
 
 

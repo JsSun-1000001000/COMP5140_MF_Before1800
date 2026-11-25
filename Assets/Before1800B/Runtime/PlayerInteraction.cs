@@ -29,6 +29,8 @@ namespace Before1800.PartB
         private Guid runId;
         private ModelRequest pendingReply;
         private float requestStarted;
+        private int closingConversation = -1;
+        private float closingSeconds, readingSeconds;
         private string acceptedReply = "", prompt = "", transient = "";
         private float transientUntil;
         private string journalCache, displayedClock;
@@ -43,11 +45,17 @@ namespace Before1800.PartB
         private PartCDialogue Model => scene.GetComponent<PartCDialogue>();
         public string ModalTitle => Screen == PlayerScreen.Ending ? Story?.EndingTitle : Screen == PlayerScreen.Reading ? Story?.ReadableTitle : "";
         public void NavigationNotice(string message) { Flash(message,6f); }
-        public void ShowServiceError(string message) { prompt = "暂时没有收到回复。你的话还在，可以重试或先走走。"; choicesDirty = true; }
-        public void AcceptProactiveReply(string text)
+        private const string ReplyUnavailable = "暂时没有收到回复。你的话还在，可以重试或先走走。";
+        public void ShowServiceError(string message)
+        {
+            prompt = string.IsNullOrEmpty(message) ? ReplyUnavailable : message + "\n" + ReplyUnavailable;
+            choicesDirty = true;
+        }
+        public void AcceptProactiveReply(string text, string action = "reply")
         {
             acceptedReply = text; topic = Topic.Reply; choicesDirty = true;
             framing = scene.DialogueOpen;
+            StartClosingIfNeeded(action);
         }
 
         public PlayerInteraction(PartBScene scene)
@@ -83,7 +91,8 @@ namespace Before1800.PartB
         public bool Waiting => scene.ModelWait;
         public float WaitingSeconds => Time.unscaledTime-requestStarted;
         public int IntroStep { get; private set; }
-        public bool CanSend => Screen == PlayerScreen.Talk && !Waiting && !DebugOpen && State.Pending == null;
+        public bool Closing => scene.DialogueOpen && closingConversation == scene.ConversationNumber;
+        public bool CanSend => Screen == PlayerScreen.Talk && !Waiting && !Closing && !DebugOpen && State.Pending == null;
         public string Speaker => "林";
         public string ClockText
         {
@@ -122,10 +131,21 @@ namespace Before1800.PartB
                 choicesDirty = true;
                 topic = Topic.Opening;
                 pendingReply = null;
+                closingConversation = -1;
                 journalCache = null;
                 Draft = transient = prompt = acceptedReply = "";
             }
             if (!scene.DialogueOpen) framing = false;
+            if (Closing && Screen == PlayerScreen.Talk && !DebugOpen)
+            {
+                closingSeconds += Time.unscaledDeltaTime;
+                if (closingSeconds >= readingSeconds)
+                {
+                    var voice = scene.GetComponent<LinVoice>();
+                    if (!voice || (!voice.Speaking && (!voice.Preparing || closingSeconds >= readingSeconds + 3f)))
+                        CloseTalk();
+                }
+            }
             if (pendingReply == null) return;
             if (scene.ModelWait && Time.unscaledTime - requestStarted < 75f) return;
             // The adapter can complete synchronously. Capture after returning from
@@ -139,11 +159,22 @@ namespace Before1800.PartB
                     if(Story && Story.LettersCompared)Story.FirstAnswerSent=true;
                     topic = Topic.Reply;
                     Draft = prompt = "";
+                    StartClosingIfNeeded(pendingReply.AcceptedAction);
                 }
-                else prompt = "暂时没有收到回复。你的话还在，可以重试或先走走。";
+                else if (string.IsNullOrEmpty(prompt)) prompt = ReplyUnavailable;
                 choicesDirty = true;
             }
             pendingReply = null;
+        }
+
+        private void StartClosingIfNeeded(string action)
+        {
+            if (action != "end_conversation" && action != "inspect" && action != "follow" &&
+                action != "agree_escape" && action != "withdraw") return;
+            closingConversation = scene.ConversationNumber;
+            closingSeconds = 0f;
+            // Give the player time to read even with narration muted or unavailable.
+            readingSeconds = Mathf.Max(2.2f, 1f + acceptedReply.Length / (GameLanguage.Code == "en" ? 16f : 6f));
         }
 
         private Focus CurrentFocus(out ApartmentDoor door)
@@ -240,6 +271,7 @@ namespace Before1800.PartB
             get
             {
                 if (Screen == PlayerScreen.Talk && Waiting) return WaitingSeconds>15 ? "林还在斟酌。你可以按 Esc 暂停这句话，原文会保留。" : "林想了想" + new string('·',1+(int)(WaitingSeconds*1.7f)%3);
+                if (Screen == PlayerScreen.Talk && Closing) return "";
                 if (Screen == PlayerScreen.Talk) return string.IsNullOrEmpty(prompt) && Model ?
                     (State.Pending != null ? "林已决定行动。结束交谈后，她会走过去。" : Model.ConnectionStatus) : prompt;
                 if (Screen != PlayerScreen.Explore) return "";
@@ -306,7 +338,7 @@ namespace Before1800.PartB
                         ? "我回去的路被挡住了。给我让一点位置，好吗？" : "我从这里过去不太方便。我们换个位置，再试一次吧。";
                     case PlayerScreen.Timeout: return "指针停在十八点。片场的出口已经关闭。";
                 }
-                if (Model && Model.IsLive && !string.IsNullOrEmpty(acceptedReply)) return acceptedReply;
+                if ((Closing || (Model && Model.IsLive)) && !string.IsNullOrEmpty(acceptedReply)) return acceptedReply;
                 if (Model && Model.IsLive && topic == Topic.Opening && Story)
                 {
                     if(State.EscapeAgreed) return "走吧。这次，我想自己看看门外。";
@@ -447,6 +479,7 @@ namespace Before1800.PartB
 
         private void BuildTalkChoices()
         {
+            if (Closing) return;
             if (State.Cooperation == CooperationMode.Withdrawn) { Add("restore", "我想继续刚才的话。"); return; }
             if (State.Pending != null) { Add("resume_action", "好，我们走吧。"); return; }
             if (State.Active != null && State.Active.Action != "follow")
@@ -679,7 +712,7 @@ namespace Before1800.PartB
 
         public void Choose(string id)
         {
-            if(Waiting) return;
+            if(Waiting || (Screen == PlayerScreen.Talk && Closing)) return;
             if (DebugOpen || string.IsNullOrEmpty(id)) return;
             bool displayed = false;
             foreach (var choice in Choices) if (choice.Id == id) { displayed = true; break; }
@@ -805,7 +838,10 @@ namespace Before1800.PartB
         {
             if (scene.DialogueOpen) scene.ToggleDialogue();
             framing = false;
-            prompt = "";
+            closingConversation = -1;
+            acceptedReply = prompt = "";
+            topic = Topic.Opening;
+            choicesDirty = true;
         }
 
         private void CancelWait()
@@ -826,6 +862,7 @@ namespace Before1800.PartB
             Draft = text.Trim();
             if (HasDialogueService)
             {
+                prompt = "";
                 requestStarted = Time.unscaledTime;
                 if (!scene.TrySendPlayerLine(Draft, out pendingReply)) prompt = "暂时没能送出。请再试一次。";
                 Tick();

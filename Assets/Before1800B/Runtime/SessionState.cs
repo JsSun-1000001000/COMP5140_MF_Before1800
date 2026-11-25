@@ -106,6 +106,8 @@ namespace Before1800.PartB
         public string Ending { get; private set; } = "none";
         public bool IsTerminal => TimedOut || Ending != "none";
         public bool IsPaused => IsTerminal || pauses.Count != 0;
+        public bool CanEndConversation => !IsTerminal && Cooperation != CooperationMode.Withdrawn &&
+            HasPause(PauseReason.Dialogue);
         public bool HasRequiredEvidence => verified.Count >= 3 && E5Verified;
         public bool CanAgreeEscape => !IsTerminal && HasRequiredEvidence && RouteConfirmed &&
             IsConcernResolved("C1") && IsConcernResolved("C2") && IsConcernResolved("C3");
@@ -432,6 +434,15 @@ namespace Before1800.PartB
             if (action == "reply" && targetId == null)
             {
                 reason = "Reply accepted.";
+                return true;
+            }
+            // Closing the dialogue is handled after the player has read Lin's last line.
+            // Existing movement resumes when that dialogue's pause token is released.
+            if (action == "end_conversation")
+            {
+                if (targetId != null || !CanEndConversation || !HasPause(PauseReason.ModelWait))
+                    return Reject("No current dialogue to end, or unexpected target.", out reason);
+                reason = "Lin finished speaking.";
                 return true;
             }
             if (Pending != null) return Reject("A command is already queued.", out reason);

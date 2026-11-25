@@ -51,7 +51,10 @@ class Coordinator:
 
     async def decide(self, request: DecisionRequest) -> DecisionResponse:
         key = (request.session_id, request.request_id)
-        fingerprint = hashlib.sha256(json.dumps(request.model_dump(mode="json"), sort_keys=True,
+        fingerprint_data = request.model_dump(mode="json")
+        # Omission versus an explicit false capability can change response validation.
+        fingerprint_data["world_actions_close_dialogue"] = request.context.world_actions_close_dialogue
+        fingerprint = hashlib.sha256(json.dumps(fingerprint_data, sort_keys=True,
             separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode("utf-8")).hexdigest()
         async with self.lock:
             self._prune()

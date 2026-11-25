@@ -195,7 +195,7 @@ namespace Before1800.PartB
         {
             if(!initialized || ReadingOpen || scene.State.IsTerminal)return;
             readingId="help";ReadableTitle="这一局要做什么？";
-            ReadableText="你是信使，也是林的朋友。你替剧组冒充她父母写回信。今天是最后一次送信，她发现了破绽。\n\n目标可以选：照常告别，或帮她查清真相，再让她自己决定是否离开。\n\n调查顺序：茶几上的两封信 → 电视上方的镜头 → 电视 → 前门墙板 → 出口 → 最后的谈话。屏幕左上会提示你当前这一步。\n\nWASD 移动，鼠标或方向键环顾，对准物品或林按 E。看到她准备行动，结束交谈让她走动。J 查看手记；H 随时回看玩法。\n\n聊天时直接打你想说的话。最终要回答她对真相、你的欺骗和门外生活的顾虑；收集东西不会自动替她作决定。";
+            ReadableText="你是信使，也是林的朋友。你替剧组冒充她父母写回信。今天是最后一次送信，她发现了破绽。\n\n目标可以选：照常告别，或帮她查清真相，再让她自己决定是否离开。\n\n调查顺序：茶几上的两封信 → 电视上方的镜头 → 电视 → 前门墙板 → 出口 → 最后的谈话。屏幕左上会提示你当前这一步。\n\nWASD 移动，鼠标或方向键环顾，对准物品或林按 E。林可以自己结束谈话，或说完后带你去看。按 Esc 可以先离开。J 查看手记；H 随时回看玩法。\n\n聊天时直接打你想说的话。最终要回答她对真相、你的欺骗和门外生活的顾虑；收集东西不会自动替她作决定。";
             readingPause=scene.State.AcquirePause(PauseReason.Journal,"play-help");
         }
         public void OpenLetterComparison()

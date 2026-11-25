@@ -168,6 +168,174 @@ namespace Before1800.PartB.Tests
         }
 
         [UnityTest]
+        public IEnumerator LinCanFinishSpeakingAndReturnThePlayerToTheResidence()
+        {
+            const string question = "我想听你说。";
+            const string ordinary = "你还记得那封信吗？";
+            const string farewell = "把信留下，我想自己看看。";
+            int requests = 0;
+            scene.PlayerLineRequested += (request, text) =>
+            {
+                requests++;
+                bool first = text == question;
+                Assert.IsTrue(scene.TryReceivePlayerReply(request, first ? ordinary : farewell,
+                    first ? "reply" : "end_conversation", null, out var reason), reason);
+            };
+            FaceLin();
+            flow.Use();
+            flow.Send(question);
+            yield return null;
+            Assert.AreEqual(PlayerScreen.Talk, flow.Screen);
+            Assert.AreEqual(ordinary, flow.Line);
+            Assert.IsNotNull(view.GetComponentInChildren<InputField>());
+            Assert.IsFalse(flow.Closing);
+            Assert.IsTrue(flow.CanSend);
+
+            flow.Send("信在这里。");
+            yield return null;
+            yield return null;
+            Assert.AreEqual(PlayerScreen.Talk, flow.Screen);
+            Assert.IsTrue(flow.Closing);
+            Assert.IsTrue(scene.State.IsPaused);
+            Assert.AreEqual(farewell, flow.Line);
+            Assert.IsNull(view.GetComponentInChildren<InputField>(), "Lin's closing line should have no reply prompt.");
+            Assert.IsTrue(view.GetComponentsInChildren<Text>(false).Any(label => label.text.Contains(farewell)),
+                "The player should see Lin's final line before control returns.");
+            Assert.IsFalse(flow.CanSend);
+            flow.Send("等一下。");
+            Assert.AreEqual(2, requests);
+
+            float deadline = Time.realtimeSinceStartup + 8f;
+            while (flow.Screen == PlayerScreen.Talk && Time.realtimeSinceStartup < deadline)
+                yield return null;
+            Assert.AreEqual(PlayerScreen.Explore, flow.Screen);
+            Assert.IsFalse(scene.State.IsPaused);
+            FaceLin();
+            flow.Use();
+            yield return null;
+            Assert.IsNotNull(view.GetComponentInChildren<InputField>());
+            Assert.AreEqual(PlayerScreen.Talk, flow.Screen);
+            Assert.IsFalse(flow.Closing);
+            Assert.IsTrue(flow.CanSend);
+        }
+
+        [UnityTest]
+        public IEnumerator AnAcceptedInvestigationShowsTheLineThenLinWalksToReadTheOriginal()
+        {
+            const string target = "sealed_letter";
+            const string line = "我自己去看封口。";
+            var adapter = scene.GetComponent<PartCDialogue>();
+            scene.PlayerLineRequested += (ticket, text) =>
+                ApplyDecision(adapter, ticket, adapter.BuildInput(ticket, text), line, "inspect", target);
+            FaceLin();
+            flow.Use();
+            var initialPosition = scene.World.Lin.position;
+            flow.Send("原信就在茶几上。");
+            yield return null;
+            yield return null;
+            Assert.IsTrue(flow.Closing);
+            Assert.IsTrue(view.GetComponentsInChildren<Text>(false).Any(label => label.text.Contains(line)));
+            Assert.AreEqual(target, scene.State.Pending?.TargetId);
+            Assert.IsNull(scene.State.Active);
+            Assert.AreEqual(initialPosition, scene.World.Lin.position);
+            Assert.IsFalse(scene.Story.HasLinRead(target));
+
+            float deadline = Time.realtimeSinceStartup + 8f;
+            while (flow.Screen == PlayerScreen.Talk && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.AreEqual(PlayerScreen.Explore, flow.Screen);
+            for (int i = 0; i < 800 && scene.State.Stage != ActionStage.Arrived; i++)
+                scene.StepSimulation(.03f, Vector2.zero, Vector2.zero);
+            Assert.AreEqual(ActionStage.Arrived, scene.State.Stage, scene.Feedback);
+            Assert.IsTrue(scene.World.AtObservation(target));
+            Assert.IsFalse(scene.Story.HasLinRead(target), "She must also spend time reading after arrival.");
+            deadline = Time.realtimeSinceStartup + 5f;
+            while (!scene.Story.HasLinRead(target) && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.IsTrue(scene.Story.HasLinRead(target));
+            Assert.IsEmpty(scene.State.VerifiedEvidence);
+        }
+
+        private static void ApplyDecision(PartCDialogue adapter, ModelRequest ticket, PartCDialogue.Input input,
+            string line, string action, string target = null, string resolvedConcern = null)
+        {
+            var output = new PartCDialogue.Output {
+                session_id = input.session_id, request_id = input.request_id, turn_id = input.turn_id,
+                state_version = input.state_version, model = "test",
+                decision = new PartCDialogue.Decision {
+                    dialogue = line, action = action, target_id = target, concern_id = resolvedConcern,
+                    concern_status = resolvedConcern == null ? "keep" : "resolved",
+                    basis_turn_id = resolvedConcern == null ? null : input.turn_id
+                }
+            };
+            adapter.ApplyGatewayResponse(ticket, input, JsonUtility.ToJson(output));
+        }
+
+        [Test]
+        public void OneFocusedQuestionAtTheBreakCanLeadToAcknowledgingTrustAndClosingInTheSameTurn()
+        {
+            const string question = "那我写的时候，谁在看？";
+            const string goodbye = "现在我知道了。让我自己想一会儿。";
+            var adapter = scene.GetComponent<PartCDialogue>();
+            PartCDialogue.Context context = null;
+            scene.PlayerLineRequested += (ticket, text) => {
+                var input = adapter.BuildInput(ticket, text);
+                context = input.context;
+                if (text == "回信是我写的。") ApplyDecision(adapter, ticket, input, question, "reply");
+                else if (text == "我利用了你对父母的信任。你有权自己选。")
+                    ApplyDecision(adapter, ticket, input, goodbye, "end_conversation", resolvedConcern: "C2");
+                else ApplyDecision(adapter, ticket, input, "我听见了。", "reply");
+            };
+            FaceLin();
+            flow.Use();
+            for (int i = 0; i < PartCDialogue.PlainReplyLimit; i++)
+            {
+                flow.Send("我还在这里。");
+                Assert.IsFalse(context.conversation_needs_break);
+                Assert.IsFalse(context.allow_break_followup);
+            }
+            flow.Send("回信是我写的。");
+            Assert.IsTrue(context.conversation_needs_break && context.allow_break_followup);
+            Assert.AreEqual(question, flow.Line);
+            Assert.IsFalse(flow.Closing);
+            Assert.IsFalse(scene.State.IsConcernResolved("C2"));
+
+            flow.Send("再说些别的。");
+            Assert.IsTrue(context.conversation_needs_break);
+            Assert.IsFalse(context.allow_break_followup);
+            Assert.AreEqual(question, flow.Line, "A second ordinary reply at this break must be rejected.");
+            Assert.IsTrue(flow.CanSend);
+
+            flow.Send("我利用了你对父母的信任。你有权自己选。");
+            Assert.IsTrue(context.allow_resolved_closing);
+            Assert.AreEqual(goodbye, flow.Line);
+            Assert.IsTrue(flow.Closing);
+            Assert.IsTrue(scene.State.IsConcernResolved("C2"));
+            Assert.IsFalse(scene.State.IsConcernResolved("C1"));
+            Assert.IsFalse(scene.State.EscapeAgreed);
+            Assert.IsNull(scene.State.Pending);
+        }
+
+        [UnityTest]
+        public IEnumerator LeavingDuringTheFarewellDoesNotCloseTheNextConversation()
+        {
+            scene.PlayerLineRequested += (request, _) => Assert.IsTrue(
+                scene.TryReceivePlayerReply(request, "让我想想。", "end_conversation", null, out var reason), reason);
+            FaceLin();
+            flow.Use();
+            flow.Send("你愿意说说吗？");
+            yield return null;
+            Assert.IsTrue(flow.Closing);
+            flow.Back();
+            Assert.AreEqual(PlayerScreen.Explore, flow.Screen);
+            FaceLin();
+            flow.Use();
+            Assert.AreEqual(PlayerScreen.Talk, flow.Screen);
+            yield return new WaitForSecondsRealtime(4f);
+            Assert.AreEqual(PlayerScreen.Talk, flow.Screen);
+            Assert.IsFalse(flow.Closing);
+            Assert.IsTrue(flow.CanSend);
+        }
+
+        [UnityTest]
         public IEnumerator LongReplyCanBeReadInSectionsWhileTimeAndActionsStayPaused()
         {
             FaceLin();

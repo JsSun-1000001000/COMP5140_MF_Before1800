@@ -56,6 +56,37 @@ namespace Before1800.PartB.Tests
             Assert.IsFalse(state.TryQueue("reply", null, out _));
         }
         [Test]
+        public void EndingJustTheConversationPreservesQueuedActionAndCanReopen()
+        {
+            var state = new SessionState();
+            var dialogue = state.AcquirePause(PauseReason.Dialogue, "conversation");
+            Assert.IsTrue(state.TryResolveConcernFromAcceptedTurn("C2", "previous", "I wrote the letters."));
+            Assert.IsTrue(state.TryQueue("inspect", SessionState.CameraTarget, out _));
+            var queued = state.Pending;
+            Assert.IsFalse(state.TryQueue("end_conversation", null, out _));
+            var wait = state.AcquirePause(PauseReason.ModelWait, "model");
+            var version = state.Version;
+            Assert.IsFalse(state.TryQueue(state.RunId, version - 1, "end_conversation", null, out _));
+            Assert.IsFalse(state.TryQueue(Guid.NewGuid(), version, "end_conversation", null, out _));
+            Assert.IsFalse(state.TryQueue(state.RunId, version, "end_conversation", "player", out _));
+            Assert.IsTrue(state.TryQueue(state.RunId, version, "end_conversation", null, out var reason), reason);
+            Assert.AreSame(queued, state.Pending);
+            Assert.IsTrue(state.IsConcernResolved("C2"));
+            Assert.IsFalse(state.WithdrawUsed);
+            Assert.IsFalse(state.IsTerminal);
+            Assert.IsEmpty(state.VerifiedEvidence);
+
+            state.ReleasePause(wait);
+            Assert.IsTrue(state.IsPaused, "The goodbye remains on screen until its dialogue is closed.");
+            state.ReleasePause(dialogue);
+            Assert.IsFalse(state.CanEndConversation);
+            Assert.IsTrue(state.TryStartPending(out var active));
+            Assert.AreSame(queued, active);
+            Assert.IsNotNull(state.AcquirePause(PauseReason.Dialogue, "next conversation"));
+            Assert.IsTrue(state.CanEndConversation);
+        }
+
+        [Test]
         public void OrdinaryDepartureIsCompleteAndRestartClearsIt()
         {
             var state = new SessionState();

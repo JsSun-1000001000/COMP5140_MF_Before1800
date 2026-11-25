@@ -15,6 +15,7 @@ namespace Before1800.PartB
         public SessionSnapshot Snapshot { get; }
         internal PauseToken Wait { get; }
         internal string PlayerReply { get; set; }
+        internal string AcceptedAction { get; set; }
         internal bool IsPlayerRequest { get; set; }
 
         internal ModelRequest(SessionState state)
@@ -37,6 +38,7 @@ namespace Before1800.PartB
         public string Feedback { get; private set; }
         public bool IntroOpen => intro != null;
         public bool DialogueOpen => dialogue != null;
+        internal int ConversationNumber { get; private set; }
         public bool MenuOpen => menu != null;
         public bool JournalOpen => journal != null;
         public bool ObservingSetBack => observingSetBack != null;
@@ -679,6 +681,7 @@ namespace Before1800.PartB
             }
             if (!TryApplyModelAction(request, action, targetId, out reason)) return false;
             request.PlayerReply = dialogueText.Trim();
+            request.AcceptedAction = action;
             return true;
         }
 
@@ -687,6 +690,12 @@ namespace Before1800.PartB
             if (request == null || request != modelRequest || !DialogueOpen)
             {
                 reason = "Request expired.";
+                return false;
+            }
+            if (action == "end_conversation" && !request.IsPlayerRequest)
+            {
+                reason = "Only a conversation reply can close this conversation.";
+                TryCancelModelRequest(request);
                 return false;
             }
             bool accepted = TryPropose(request.RunId, request.Version, action, targetId, out reason);
@@ -767,7 +776,11 @@ namespace Before1800.PartB
                 CancelModelRequest();
                 Release(ref dialogue);
             }
-            else Acquire(ref dialogue, PauseReason.Dialogue, "dialogue");
+            else
+            {
+                Acquire(ref dialogue, PauseReason.Dialogue, "dialogue");
+                ConversationNumber++;
+            }
         }
 
         public void ToggleMenu()

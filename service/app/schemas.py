@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 Identifier = Annotated[str, Field(min_length=1, max_length=96, pattern=r"^[A-Za-z0-9_.:-]+$")]
-Action = Literal["reply", "follow", "inspect", "withdraw", "agree_escape"]
+Action = Literal["reply", "follow", "inspect", "withdraw", "agree_escape", "end_conversation"]
 Concern = Literal["C1", "C2", "C3"]
 Observation = Annotated[str, Field(max_length=1000)]
+FINAL_QUESTION = re.compile(r"""[?？][\s"'”’」』＂＇]*\Z""")
 STORY_TARGETS = ("sealed_letter", "parent_reply", "parents_diary", "friend_postcard", "exit_door", "memory_sofa", "memory_books", "memory_plant", "memory_table", "memory_shoes", "memory_lamp", "memory_mirror", "memory_fridge", "memory_chair", "memory_window")
 
 
@@ -30,6 +32,9 @@ class DialogueEntry(StrictModel):
 class SceneContext(StrictModel):
     output_language: Literal["zh", "en"] = "zh"
     allow_trust_resolution: bool = False
+    allow_resolved_closing: bool = False
+    conversation_needs_break: bool = False
+    allow_break_followup: bool = False
     withdraw_used: bool = False
     verified_evidence: Annotated[list[Identifier], Field(max_length=16)]
     concerns: Concerns
@@ -37,7 +42,7 @@ class SceneContext(StrictModel):
     escape_agreed: bool
     route_confirmed: bool
     known_targets: Annotated[list[Identifier], Field(max_length=32)]
-    allowed_actions: Annotated[list[Action], Field(min_length=1, max_length=5)]
+    allowed_actions: Annotated[list[Action], Field(min_length=1, max_length=6)]
     recent_dialogue: Annotated[list[DialogueEntry], Field(max_length=40)]
     last_action_result: dict[str, Any] | None
     game_time: Annotated[str, Field(max_length=32)] | None = None
@@ -48,6 +53,12 @@ class SceneContext(StrictModel):
     relationship_memory: Annotated[list[Observation], Field(max_length=24)] = Field(default_factory=list)
     lin_private_knowledge: Annotated[list[Observation], Field(max_length=24)] = Field(default_factory=list)
     player_discovered: Annotated[list[Identifier], Field(max_length=16)] = Field(default_factory=list)
+
+    @property
+    def world_actions_close_dialogue(self) -> bool:
+        # Proactive inspections omit end_conversation even in the residence client.
+        return ("end_conversation" in self.allowed_actions
+                or not self.model_fields_set.isdisjoint({"allow_resolved_closing", "allow_break_followup"}))
 
     @field_validator("verified_evidence", "known_targets", "allowed_actions", "player_discovered")
     @classmethod
@@ -91,6 +102,12 @@ class DecisionRequest(StrictModel):
             raise ValueError("User requests need non-empty player_input")
         if self.trigger == "proactive" and self.player_input.strip():
             raise ValueError("Proactive requests must not invent player input")
+        if self.context.allow_break_followup and not self.context.conversation_needs_break:
+            raise ValueError("A break follow-up requires a conversation break")
+        if self.context.conversation_needs_break and (
+                self.trigger != "user" or "end_conversation" not in self.context.allowed_actions
+                or self.context.cooperation_mode == "withdrawn"):
+            raise ValueError("A conversation break requires a player turn that can end the conversation")
         return self
 
 
@@ -107,15 +124,18 @@ class Decision(StrictModel):
     def target_matches_action(self) -> Decision:
         targets = {"reply": (None,), "follow": ("player",),
                    "inspect": ("camera_test", "living_tv", "set_back", "camera_01") + STORY_TARGETS,
-                   "withdraw": (None,), "agree_escape": (None,)}
+                   "withdraw": (None,), "agree_escape": (None,), "end_conversation": (None,)}
         if self.target_id not in targets[self.action]:
             raise ValueError("Target does not match the action contract")
         if self.concern_status == "keep" and (self.concern_id is not None or self.basis_turn_id is not None):
             raise ValueError("No concern transition on keep")
-        if self.concern_status == "resolved" and (self.concern_id is None or not self.basis_turn_id or self.action != "reply"):
-            raise ValueError("Concern resolution requires a reply tied to the current turn")
+        if self.concern_status == "resolved" and (self.concern_id is None or not self.basis_turn_id
+                or self.action not in ("reply", "end_conversation")):
+            raise ValueError("Concern resolution needs a spoken reply or closing line tied to the current turn")
         if not self.dialogue.strip():
             raise ValueError("Dialogue must not be blank")
+        if self.action == "end_conversation" and FINAL_QUESTION.search(self.dialogue):
+            raise ValueError("End the conversation with a statement instead of a final question")
         return self
 
 
@@ -138,9 +158,18 @@ class CancelRequest(StrictModel):
 
 def validate_context_action(decision: Decision, request: DecisionRequest) -> None:
     context = request.context
+    if (decision.action in ("inspect", "follow", "withdraw", "agree_escape")
+            and context.world_actions_close_dialogue and FINAL_QUESTION.search(decision.dialogue)):
+        raise ValueError("The player regains control after this action; finish the line with a statement")
     facts = set(context.verified_evidence) & {"E1", "E2", "E4", "E5"}
     sufficient_facts = "E5" in facts and len(facts) >= 3
+    if context.conversation_needs_break and decision.action == "reply" and decision.concern_status == "keep":
+        if (not context.allow_break_followup or not FINAL_QUESTION.search(decision.dialogue)
+                or len(re.findall(r"[?？]+", decision.dialogue)) != 1):
+            raise ValueError("A plain reply at a break needs the one permitted clarifying question")
     if decision.concern_status == "resolved":
+        if decision.action == "end_conversation" and not context.allow_resolved_closing:
+            raise ValueError("This client can only record a concern resolution on reply")
         if (request.trigger != "user" or not request.player_input.strip()
                 or decision.basis_turn_id != request.turn_id or decision.concern_id is None
                 or getattr(context.concerns, decision.concern_id) != "open"):
