@@ -11,7 +11,7 @@ Action = Literal["reply", "follow", "inspect", "withdraw", "agree_escape", "end_
 Concern = Literal["C1", "C2", "C3"]
 Observation = Annotated[str, Field(max_length=1000)]
 FINAL_QUESTION = re.compile(r"""[?？][\s"'”’」』＂＇]*\Z""")
-STORY_TARGETS = ("sealed_letter", "parent_reply", "parents_diary", "friend_postcard", "exit_door", "memory_sofa", "memory_books", "memory_plant", "memory_table", "memory_shoes", "memory_lamp", "memory_mirror", "memory_fridge", "memory_chair", "memory_window")
+STORY_TARGETS = ("sealed_letter", "parent_reply", "parents_diary", "friend_postcard", "exit_door", "memory_sofa", "memory_books", "memory_plant", "memory_table", "memory_shoes", "memory_lamp", "memory_mirror", "memory_fridge", "memory_chair", "memory_window", "memory_bedside", "memory_wardrobe", "memory_sink")
 
 
 class StrictModel(BaseModel):

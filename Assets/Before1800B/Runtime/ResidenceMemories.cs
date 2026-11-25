@@ -11,7 +11,10 @@ namespace Before1800.PartB
         readonly List<Place> places=new List<Place>();
         readonly HashSet<string> noticed=new HashSet<string>();
         PartBScene scene; string dwell,queued;float dwellTime,inspection;Guid run;ActionTicket ticket;
-        public static readonly string[] Ids={"memory_sofa","memory_books","memory_plant","memory_table","memory_shoes","memory_lamp","memory_mirror","memory_fridge","memory_chair","memory_window"};
+        public static readonly string[] Ids={
+            "memory_sofa","memory_books","memory_plant","memory_table","memory_shoes","memory_lamp",
+            "memory_mirror","memory_fridge","memory_chair","memory_window",
+            "memory_bedside","memory_wardrobe","memory_sink"};
         public static bool IsTarget(string id)=>Array.IndexOf(Ids,id)>=0;
         public IEnumerable<Place> Places=>places;
         public string FocusName=>Focused()?.Name;
@@ -30,12 +33,16 @@ namespace Before1800.PartB
             Add(7,"Fridge","冰箱","你在冰箱上贴过自制的『出去看看』清单，第一项是买一颗不知道名字的水果。后来父母的信说等他们回来一起去，你把清单收起来了。你并非不想走，而是把等待当成维系关系的方法。现在仍会纠结是不是只有离开才算勇敢。");
             Add(8,"LivingRoomBook Chair","阅读椅","阿禾最爱倒坐这把椅子，给每个路过的人编职业，唯独说不出你以后会做什么。你当时很生气，现在觉得她是在等你自己说。你会分辨别人好意里的冒犯；如果玩家只把你当需要拯救的人，会请他先听你讲完。");
             Add(9,"Kitchen TumbWindow","厨房窗边","你每天看窗边一小块光走到桌角，凭这个决定泡第二杯茶。你喜欢雨前的土味，却不喜欢所有人都说雨天必须忧伤。阿禾说过窗外也有很普通、很无聊的日子，你反而觉得那很诱人。未经亲见，不把窗外景色直接说成假景。");
+            // Fill quieter rooms without adding countable evidence: bedside, wardrobe, bathroom sink.
+            Add(10,"Bedroom Bedtumb","床头柜","你把闹钟拨得比真正需要的早十五分钟，却经常在第二声铃后才起。抽屉里有一张未填完的修书课程报名表，被一枚缺角的橡皮压着。你会谈拖延和期待，不把抽屉当成证据柜；没邀请时，不让朋友翻里面的东西。");
+            Add(11,"Bedroom Wardrobe","衣柜","衣柜最里层挂着一件你觉得『太正式』的外套，只在想象自己走进工坊时拿出来比划过。袖口还留着自制名牌贴纸的胶印。你会笑自己排练过『明天见』，但真正推门仍需要勇气。衣柜不是密室，只是私人准备的地方。");
+            Add(12,"Bathroom Sink","浴室洗手台","你习惯把水龙头开到固定的那一格，听水流过才觉得脸洗干净了。镜子雾气散开时，你会数自己有没有睡够。浴室很小，谈话最好停在门口；你可以聊这些琐碎习惯，不要在这里逼问信件或片场。");
         }
         void Add(int index,string objectName,string title,string memory)
         {
-            Transform prop=null;
-            foreach(var t in FindObjectsOfType<Transform>())if(t.name==objectName){prop=t;break;}
-            if(!prop)return;
+            Transform prop=FindNamed(objectName);
+            if(!prop && objectName=="Bedroom Bedtumb") prop=FindNamed("TumbBedroom") ?? FindNamed("Bedroom MiniTable");
+            if(!prop) { Debug.LogWarning("[ResidenceMemories] Missing prop for "+Ids[index]+": "+objectName); return; }
             Bounds bounds=new Bounds(prop.position,Vector3.one*.2f);bool first=true;
             foreach(var renderer in prop.GetComponentsInChildren<Renderer>()) { if(first){bounds=renderer.bounds;first=false;}else bounds.Encapsulate(renderer.bounds); }
             var focus=new GameObject(Ids[index]+" focus").transform;focus.SetParent(transform);focus.position=bounds.center;
@@ -50,6 +57,11 @@ namespace Before1800.PartB
             var goal=new GameObject(Ids[index]+" approach").transform;goal.SetParent(transform);goal.position=best;
             scene.World.RegisterStoryTarget(Ids[index],goal,focus);
             places.Add(new Place {Id=Ids[index],Name=title,Memory=memory,Prop=prop,Focus=focus});
+        }
+        static Transform FindNamed(string objectName)
+        {
+            foreach(var t in FindObjectsOfType<Transform>()) if(t.name==objectName) return t;
+            return null;
         }
         Place Focused()
         {

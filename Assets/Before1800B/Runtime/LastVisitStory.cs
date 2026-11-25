@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Rendering;
 
 namespace Before1800.PartB
 {
@@ -195,7 +196,7 @@ namespace Before1800.PartB
         {
             if(!initialized || ReadingOpen || scene.State.IsTerminal)return;
             readingId="help";ReadableTitle="这一局要做什么？";
-            ReadableText="你是信使，也是林的朋友。你替剧组冒充她父母写回信。今天是最后一次送信，她发现了破绽。\n\n目标可以选：照常告别，或帮她查清真相，再让她自己决定是否离开。\n\n调查顺序：茶几上的两封信 → 电视上方的镜头 → 电视 → 前门墙板 → 出口 → 最后的谈话。屏幕左上会提示你当前这一步。\n\nWASD 移动，鼠标或方向键环顾，对准物品或林按 E。林可以自己结束谈话，或说完后带你去看。按 Esc 可以先离开。J 查看手记；H 随时回看玩法。\n\n聊天时直接打你想说的话。最终要回答她对真相、你的欺骗和门外生活的顾虑；收集东西不会自动替她作决定。";
+            ReadableText="你是信使，也是林的朋友。你替剧组冒充她父母写回信。今天是最后一次送信，她发现了破绽。\n\n目标可以选：照常告别，或帮她查清真相，再让她自己决定是否离开。\n\n调查顺序：茶几上的两封信 → 电视上方的镜头 → 电视 → 前门墙板 → 出口 → 最后的谈话。屏幕左上会提示你当前这一步。\n\n客厅之外也值得走走：厨房、卧室、浴室里的日常物件（床头柜、衣柜、洗手台等）可以聊生活回忆，不是新的案件证据。\n\nWASD 移动，鼠标或方向键环顾，对准物品或林按 E。林可以自己结束谈话，或说完后带你去看。按 Esc 可以先离开。J 查看手记；H 随时回看玩法。\n\n聊天时直接打你想说的话。最终要回答她对真相、你的欺骗和门外生活的顾虑；收集东西不会自动替她作决定。";
             readingPause=scene.State.AcquirePause(PauseReason.Journal,"play-help");
         }
         public void OpenLetterComparison()
@@ -347,9 +348,18 @@ namespace Before1800.PartB
         }
         Material Material(string label, Color color)
         {
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            var material = new Material(shader) { name = label, color = color };
-            materials.Add(material); return material;
+            // PackageCache still contains URP Lit even when GraphicsSettings uses Built-in.
+            // Preferring URP here makes letters, diary and the residence E5 panel render magenta.
+            bool urp = GraphicsSettings.currentRenderPipeline;
+            var shader = Shader.Find(urp ? "Universal Render Pipeline/Lit" : "Standard") ?? Shader.Find("Standard");
+            if (!shader) throw new InvalidOperationException("No opaque lit shader available for story props.");
+            var material = new Material(shader) { name = label };
+            if (urp && material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
+            else material.color = color;
+            if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", .12f);
+            if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", .12f);
+            materials.Add(material);
+            return material;
         }
         void OnDestroy() { foreach (var material in materials) if (material) Destroy(material); }
     }

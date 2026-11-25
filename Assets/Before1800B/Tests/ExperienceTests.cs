@@ -38,11 +38,14 @@ namespace Before1800.PartB.Tests
         [Test] public void EverydayObjectsHaveDistinctMemoriesAndReachableTargets()
         {
             var daily=scene.GetComponent<ResidenceMemories>();var places=daily.Places.ToArray();
-            Assert.AreEqual(10,places.Length,"Every authored everyday place should be reachable: "+string.Join(",",places.Select(p=>p.Id)));
+            Assert.AreEqual(13,places.Length,"Every authored everyday place should be reachable: "+string.Join(",",places.Select(p=>p.Id)));
             foreach(var p in places){Assert.IsTrue(SessionState.IsStoryTarget(p.Id),p.Id);Assert.Greater(p.Memory.Length,50);}
             Assert.IsTrue(scene.World.CanInspect("memory_sofa"));
             Assert.IsTrue(scene.World.CanInspect("memory_books"));
-            Assert.AreEqual(10,daily.Knowledge.Distinct().Count());
+            Assert.IsTrue(scene.World.CanInspect("memory_bedside"));
+            Assert.IsTrue(scene.World.CanInspect("memory_wardrobe"));
+            Assert.IsTrue(scene.World.CanInspect("memory_sink"));
+            Assert.AreEqual(13,daily.Knowledge.Distinct().Count());
         }
         [UnityTest] public IEnumerator TitleMusicAndInteractionSoundAreAudible()
         {
