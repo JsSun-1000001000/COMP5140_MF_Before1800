@@ -2,10 +2,12 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
 using System.Runtime.Serialization.Json;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.Networking;
 
 namespace Before1800.PartB
 {
@@ -13,10 +15,14 @@ namespace Before1800.PartB
     public sealed class PartCDialogue : MonoBehaviour
     {
         private string gateway = "http://127.0.0.1:8180/npc/";
-        [Serializable] private sealed class Entry { public string role, content; }
-        [Serializable] private sealed class Context
+        private HttpClient gatewayHttp;
+        private Input activeInput;
+        private sealed class GatewayResponse { public string Body, Failure; }
+        [Serializable] internal sealed class Entry { public string role, content; }
+        [Serializable] internal sealed class Context
         {
-            public bool allow_trust_resolution, escape_agreed, route_confirmed, withdraw_used;
+            public bool allow_trust_resolution, escape_agreed, route_confirmed, withdraw_used, conversation_needs_break;
+            public bool allow_resolved_closing, allow_break_followup;
             public string[] narrative_observations, relationship_memory, lin_private_knowledge;
             public string cooperation_mode, game_time, output_language;
             public string[] known_targets, allowed_actions, observations, player_discovered, verified_evidence;
@@ -24,14 +30,14 @@ namespace Before1800.PartB
             public Entry[] recent_dialogue;
             public ActionResultSnapshot last_action_result;
         }
-        [Serializable] private sealed class Input
+        [Serializable] internal sealed class Input
         {
             public string session_id, request_id, turn_id, trigger = "user", player_input;
             public long state_version;
             public Context context;
         }
-        [Serializable] private sealed class Decision { public string dialogue, action, target_id, concern_id, concern_status, basis_turn_id; }
-        [Serializable] private sealed class Output
+        [Serializable] internal sealed class Decision { public string dialogue, action, target_id, concern_id, concern_status, basis_turn_id; }
+        [Serializable] internal sealed class Output
         {
             public string session_id, request_id, turn_id, model, provider;
             public long state_version;
@@ -41,6 +47,9 @@ namespace Before1800.PartB
         private readonly List<Entry> history = new List<Entry>();
         private PartBScene scene;
         private Guid currentRun;
+        private int conversationNumber, plainReplyCount;
+        internal const int PlainReplyLimit = 6;
+        private string lastClosingLine;
         private bool live, panel, ready, proactiveRequest;
         private string proactiveObservation;
         private readonly List<string> memories = new List<string>();
@@ -60,6 +69,11 @@ namespace Before1800.PartB
         private void Awake()
         {
             scene = GetComponent<PartBScene>();
+            // Player traffic is local IPC. Windows' desktop proxy can return its own 502
+            // for a loopback POST without ever reaching the game's Python process.
+            gatewayHttp = new HttpClient(new HttpClientHandler {
+                UseProxy = false, AllowAutoRedirect = false, UseCookies = false
+            }) { Timeout = Timeout.InfiniteTimeSpan, MaxResponseContentBufferSize = 65536 };
             const string flag = "--lin-gateway=";
             var address = Environment.GetEnvironmentVariable("BEFORE1800_LIN_GATEWAY");
             foreach (var arg in Environment.GetCommandLineArgs())
@@ -82,16 +96,14 @@ namespace Before1800.PartB
         private IEnumerator CheckHealth()
         {
             nextHealth = Time.unscaledTime + 15f;
-            using (var http = UnityWebRequest.Get(gateway.Replace("/npc/", "/health")))
-            {
-                http.timeout = 4;
-                yield return http.SendWebRequest();
-                Health health = null;
-                if (http.result == UnityWebRequest.Result.Success)
-                    try { health = JsonUtility.FromJson<Health>(http.downloadHandler.text); } catch (ArgumentException) { }
-                ready = health != null && health.ready;
-                serviceLabel = ready ? "" : "暂时联系不上，请稍后再说。你的话会保留。";
-            }
+            var check = SendToGateway("/health", null, 4);
+            while (!check.IsCompleted) yield return null;
+            var result = check.GetAwaiter().GetResult();
+            Health health = null;
+            if (result.Failure == null)
+                try { health = JsonUtility.FromJson<Health>(result.Body); } catch (ArgumentException) { }
+            ready = health != null && health.ready;
+            serviceLabel = ready ? "" : "暂时联系不上，请稍后再说。你的话会保留。";
         }
 
         public void SetLive(bool value)
@@ -127,6 +139,16 @@ namespace Before1800.PartB
         private void OnDestroy()
         {
             if (scene) scene.PlayerLineRequested -= Request;
+            if (gatewayHttp == null) return;
+            gatewayHttp.CancelPendingRequests();
+            if (activeInput == null) gatewayHttp.Dispose();
+            else _ = CancelAndDispose(activeInput);
+        }
+
+        private async Task CancelAndDispose(Input input)
+        {
+            try { await CancelOnGateway(input).ConfigureAwait(false); }
+            finally { gatewayHttp.Dispose(); }
         }
 
         private void Request(ModelRequest ticket, string line)
@@ -135,17 +157,26 @@ namespace Before1800.PartB
         }
 
         // Freeze the request body before the transport coroutine can yield.
-        internal IEnumerator PrepareTurn(ModelRequest ticket, string line)
+        internal Input BuildInput(ModelRequest ticket, string line)
         {
             if (currentRun != ticket.RunId)
             {
                 history.Clear();
                 memories.Clear();
+                plainReplyCount = 0;
+                lastClosingLine = null;
                 currentRun = ticket.RunId;
+            }
+            if (conversationNumber != scene.ConversationNumber)
+            {
+                conversationNumber = scene.ConversationNumber;
+                plainReplyCount = 0;
             }
             var s = ticket.Snapshot;
             var targets = new List<string> { "player" };
             var actions = new List<string> { "reply" };
+            bool mayClose = !proactiveRequest && scene.State.CanEndConversation;
+            if (mayClose) actions.Add("end_conversation");
             bool canMove = scene.State.Pending == null && scene.State.Cooperation != CooperationMode.Withdrawn
                 && (scene.State.Active == null || scene.State.Active.Action == "follow");
             if (canMove && !scene.State.EscapeAgreed)
@@ -166,6 +197,9 @@ namespace Before1800.PartB
 
             if (canMove && scene.State.EscapeAgreed) actions.Add("follow");
             var observations = new List<string> { "当前动作阶段：" + s.action_stage };
+            if (!proactiveRequest && lastClosingLine != null)
+                observations.Add("这是你主动收住上次谈话后，朋友再次来找你。你收尾时原话是：“" + lastClosingLine +
+                    "”。若有新发现或新问题，可以接着谈；若只是重复催促，你可以坚持刚才的界限。");
             if(scene.State.E1Verified) observations.Add("已完成且不撤销的亲见：你换位时亲眼看见镜头外壳转向自己。不要再说你没看过摄像头。");
             if(scene.State.E4Verified) observations.Add("已完成且不撤销的亲见：你点播节目命中，再改口，电视也跟着变。不要再要求重做电视实验。");
             if(scene.State.E5Verified) observations.Add("已完成且不撤销的亲见：你亲眼看清墙后的布景支架和制作标记。不要再说还没有见过布景。");
@@ -196,7 +230,7 @@ namespace Before1800.PartB
             var privateKnowledge = new List<string>(scene.Story ? scene.Story.LinPrivateKnowledge : new string[0]);
             var daily = GetComponent<ResidenceMemories>();
             if(daily) { privateKnowledge.AddRange(daily.Knowledge); if(!string.IsNullOrEmpty(daily.Observation)) observations.Add(daily.Observation); }
-            var input = new Input {
+            return new Input {
                 session_id = s.run_id, request_id = ticket.RequestId.ToString("N"), turn_id = ticket.RequestId.ToString("N"),
                 state_version = s.state_version, player_input = proactiveRequest ? "" : line, trigger = proactiveRequest ? "proactive" : "user",
                 context = new Context {
@@ -204,12 +238,20 @@ namespace Before1800.PartB
                     verified_evidence = s.verified_evidence, player_discovered = s.player_discoveries, concerns = s.concerns,
                     route_confirmed = s.route_confirmed, escape_agreed = s.escape_agreed, cooperation_mode = s.cooperation_mode,
                     game_time = s.time_hms, last_action_result = s.last_action_result, recent_dialogue = history.ToArray(),
+                    conversation_needs_break = mayClose && plainReplyCount >= PlainReplyLimit,
+                    allow_break_followup = mayClose && plainReplyCount == PlainReplyLimit,
+                    allow_resolved_closing = mayClose,
                     allow_trust_resolution = s.concerns.C2 == "open", withdraw_used = scene.State.WithdrawUsed,
                     narrative_observations = scene.Story ? scene.Story.StoryObservations : new string[0],
                     lin_private_knowledge = privateKnowledge.ToArray(),
                     relationship_memory = memories.ToArray()
                 }
             };
+        }
+
+        internal IEnumerator PrepareTurn(ModelRequest ticket, string line)
+        {
+            var input = BuildInput(ticket, line);
             using (var buffer = new MemoryStream())
             {
                 new DataContractJsonSerializer(typeof(Input)).WriteObject(buffer, input);
@@ -220,88 +262,125 @@ namespace Before1800.PartB
             return Decide(ticket, input, sent);
         }
 
-        private UnityWebRequest Post(string endpoint, string json)
+        private async Task<GatewayResponse> SendToGateway(string endpoint, string json, int seconds,
+            CancellationToken cancellation = default)
         {
-            var http = new UnityWebRequest(gateway + endpoint, "POST") {
-                uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json)),
-                downloadHandler = new DownloadHandlerBuffer(), timeout = 70, redirectLimit = 0
-            };
-            http.SetRequestHeader("Content-Type", "application/json");
-            return http;
+            if (!Uri.TryCreate(gateway, UriKind.Absolute, out var root) ||
+                !Uri.TryCreate(root, endpoint, out var address) || address.Scheme != Uri.UriSchemeHttp ||
+                !address.IsLoopback || address.UserInfo.Length != 0)
+                return new GatewayResponse { Failure = "本机对话服务地址无效" };
+            try
+            {
+                using (var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellation))
+                using (var request = new HttpRequestMessage(json == null ? HttpMethod.Get : HttpMethod.Post, address))
+                {
+                    deadline.CancelAfter(TimeSpan.FromSeconds(seconds));
+                    if (json != null) request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+                    using (var response = await gatewayHttp.SendAsync(request, deadline.Token).ConfigureAwait(false))
+                    {
+                        if (!response.IsSuccessStatusCode)
+                            return new GatewayResponse { Failure = "HTTP " + (int)response.StatusCode };
+                        return new GatewayResponse { Body = await response.Content.ReadAsStringAsync().ConfigureAwait(false) };
+                    }
+                }
+            }
+            catch (OperationCanceledException) { return new GatewayResponse { Failure = "等待本机对话服务超时" }; }
+            catch (HttpRequestException) { return new GatewayResponse { Failure = "无法连接本机对话服务" }; }
+            catch (IOException) { return new GatewayResponse { Failure = "无法连接本机对话服务" }; }
+            catch (ObjectDisposedException) { return new GatewayResponse { Failure = "无法连接本机对话服务" }; }
+        }
+
+        private Task<GatewayResponse> CancelOnGateway(Input input)
+        {
+            return SendToGateway("cancel", JsonUtility.ToJson(new Cancellation {
+                session_id = input.session_id, request_id = input.request_id
+            }), 4);
         }
 
         private IEnumerator Decide(ModelRequest ticket, Input input, string json)
         {
-            using (var http = Post("decide", json))
+            activeInput = input;
+            using (var cancellation = new CancellationTokenSource())
             {
-                var op = http.SendWebRequest();
-                while (!op.isDone && scene.IsCurrentRequest(ticket)) yield return null;
+                var decision = SendToGateway("decide", json, 70, cancellation.Token);
+                while (!decision.IsCompleted && scene.IsCurrentRequest(ticket)) yield return null;
+                if (activeInput == input) activeInput = null;
                 if (!scene.IsCurrentRequest(ticket))
                 {
-                    http.Abort();
-                    using (var cancel = Post("cancel", JsonUtility.ToJson(new Cancellation {
-                        session_id = input.session_id, request_id = input.request_id })))
-                        yield return cancel.SendWebRequest();
+                    cancellation.Cancel();
+                    _ = CancelOnGateway(input);
                     yield break;
                 }
-                received = http.downloadHandler.text;
-                if (http.result != UnityWebRequest.Result.Success)
+                var result = decision.GetAwaiter().GetResult();
+                if (result.Failure != null)
                 {
                     ready = false;
                     serviceLabel = "连接暂时中断 · 文字已保留，可重试";
-                    Reject(ticket, "网关 " + http.responseCode + " " + http.error);
+                    Reject(ticket, result.Failure);
+                    if (result.Failure == "等待本机对话服务超时") _ = CancelOnGateway(input);
                     yield break;
                 }
 
-                Output answer;
-                try { answer = JsonUtility.FromJson<Output>(received); }
-                catch (ArgumentException) { answer = null; }
-                var d = answer?.decision;
-                if (d == null || answer.session_id != input.session_id || answer.request_id != input.request_id
-                    || answer.turn_id != input.turn_id || answer.state_version != input.state_version)
-                {
-                    Reject(ticket, "回复与本轮请求不匹配");
-                    yield break;
-                }
-                string target = string.IsNullOrEmpty(d.target_id) ? null : d.target_id;
-                bool resolve = d.concern_status == "resolved" && d.basis_turn_id == input.turn_id
-                    && d.action == "reply" && input.trigger == "user" && scene.State.CanResolveConcern(d.concern_id);
-                bool keep = d.concern_status == "keep" && string.IsNullOrEmpty(d.concern_id) && string.IsNullOrEmpty(d.basis_turn_id);
-                if ((!keep && !resolve) || Array.IndexOf(input.context.allowed_actions, d.action) < 0
-                    || (target != null && Array.IndexOf(input.context.known_targets, target) < 0)
-                    || (input.trigger == "proactive" && d.action != "reply" && d.action != "inspect"))
-                {
-                    Reject(ticket, "动作或顾虑提议超出本轮范围");
-                    yield break;
-                }
-                if (!scene.TryReceivePlayerReply(ticket, d.dialogue, d.action, target, out var reason))
-                {
-                    Reject(ticket, reason);
-                    yield break;
-                }
-                if (resolve) scene.State.TryResolveConcernFromAcceptedTurn(d.concern_id, input.turn_id, input.player_input);
-                if (input.trigger == "user") history.Add(new Entry { role = "user", content = input.player_input });
-                history.Add(new Entry { role = "assistant", content = d.dialogue });
-                if (history.Count > 36) history.RemoveRange(0, history.Count - 36);
-                if (input.trigger == "user")
-                {
-                    memories.Add("朋友曾原话说：" + input.player_input.Substring(0, Math.Min(500, input.player_input.Length)));
-                    memories.Add("你当时原话回答：" + d.dialogue.Substring(0, Math.Min(500, d.dialogue.Length)));
-                    // Preserve the inciting exchange and the most recent exchanges verbatim, without invented summaries.
-                    while (memories.Count > 24) memories.RemoveAt(6);
-                }
-                if (input.trigger == "proactive") scene.GetComponent<GreyboxHUD>().Flow.AcceptProactiveReply(d.dialogue);
-                GetComponent<ResidenceAudio>()?.PlayCue("dialogue");
-                status = answer.model + " 已接受 " + d.action + " " + target + (resolve ? " · " + d.concern_id + " 已回应" : "");
-                Debug.Log("[Part C] " + input.request_id + " " + status);
+                received = result.Body;
+                ApplyGatewayResponse(ticket, input, received);
             }
+        }
+
+        internal void ApplyGatewayResponse(ModelRequest ticket, Input input, string responseJson)
+        {
+            if (!scene.IsCurrentRequest(ticket)) return;
+            Output answer;
+            try { answer = JsonUtility.FromJson<Output>(responseJson); }
+            catch (ArgumentException) { answer = null; }
+            var d = answer?.decision;
+            if (d == null || answer.session_id != input.session_id || answer.request_id != input.request_id
+                || answer.turn_id != input.turn_id || answer.state_version != input.state_version)
+            {
+                Reject(ticket, "回复与本轮请求不匹配");
+                return;
+            }
+            string target = string.IsNullOrEmpty(d.target_id) ? null : d.target_id;
+            bool resolve = d.concern_status == "resolved" && d.basis_turn_id == input.turn_id
+                && (d.action == "reply" || (input.context.allow_resolved_closing && d.action == "end_conversation"))
+                && input.trigger == "user" && scene.State.CanResolveConcern(d.concern_id);
+            bool keep = d.concern_status == "keep" && string.IsNullOrEmpty(d.concern_id) && string.IsNullOrEmpty(d.basis_turn_id);
+            if ((!keep && !resolve) || Array.IndexOf(input.context.allowed_actions, d.action) < 0
+                || (input.context.conversation_needs_break && !input.context.allow_break_followup && keep && d.action == "reply")
+                || (target != null && Array.IndexOf(input.context.known_targets, target) < 0)
+                || (input.trigger == "proactive" && d.action != "reply" && d.action != "inspect"))
+            {
+                Reject(ticket, "动作或顾虑提议超出本轮范围");
+                return;
+            }
+            if (!scene.TryReceivePlayerReply(ticket, d.dialogue, d.action, target, out var reason))
+            {
+                Reject(ticket, reason);
+                return;
+            }
+            if (resolve) scene.State.TryResolveConcernFromAcceptedTurn(d.concern_id, input.turn_id, input.player_input);
+            if (input.trigger == "user") history.Add(new Entry { role = "user", content = input.player_input });
+            history.Add(new Entry { role = "assistant", content = d.dialogue });
+            if (history.Count > 36) history.RemoveRange(0, history.Count - 36);
+            if (input.trigger == "user")
+            {
+                plainReplyCount = d.action == "reply" && keep ? plainReplyCount + 1 : 0;
+                lastClosingLine = d.action == "end_conversation" ? d.dialogue.Substring(0, Math.Min(500, d.dialogue.Length)) : null;
+                memories.Add("朋友曾原话说：" + input.player_input.Substring(0, Math.Min(500, input.player_input.Length)));
+                memories.Add("你当时原话回答：" + d.dialogue.Substring(0, Math.Min(500, d.dialogue.Length)));
+                // Preserve the inciting exchange and the most recent exchanges verbatim, without invented summaries.
+                while (memories.Count > 24) memories.RemoveAt(6);
+            }
+            if (input.trigger == "proactive") scene.GetComponent<GreyboxHUD>().Flow.AcceptProactiveReply(d.dialogue, d.action);
+            GetComponent<ResidenceAudio>()?.PlayCue("dialogue");
+            status = answer.model + " 已接受 " + d.action + " " + target + (resolve ? " · " + d.concern_id + " 已回应" : "");
+            Debug.Log("[Part C] " + input.request_id + " " + status);
         }
 
         private void Reject(ModelRequest request, string reason)
         {
             scene.TryCancelModelRequest(request);
             status = "未执行：" + reason;
-            if (scene.DialogueOpen) scene.GetComponent<GreyboxHUD>()?.Flow?.ShowServiceError(status);
+            if (scene.DialogueOpen) scene.GetComponent<GreyboxHUD>()?.Flow?.ShowServiceError(reason);
             Debug.LogWarning("[Part C] " + status);
         }
 

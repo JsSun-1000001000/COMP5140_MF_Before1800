@@ -22,6 +22,7 @@ namespace Before1800.PartB
         Guid run; bool preview, rendering;
         internal bool Previewing => preview;
         public bool Speaking => source && source.isPlaying;
+        public bool Preparing => rendering;
         public bool Available { get; private set; } = true;
         public float MouthWeight => mouthWeight;
         public float Volume { get => PlayerPrefs.GetFloat("Before1800.Voice", .9f); set => PlayerPrefs.SetFloat("Before1800.Voice", Mathf.Clamp01(value)); }

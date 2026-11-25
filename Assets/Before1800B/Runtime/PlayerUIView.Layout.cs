@@ -378,8 +378,9 @@ namespace Before1800.PartB
             float inputWidth=inside-leaveWidth-sendWidth-20;
             At(input.GetComponent<RectTransform>(),left,y,inputWidth,39);
             At(send.Node,left+inputWidth+9,y,sendWidth,39);
-            At(exitTalk.Node,left+inside-leaveWidth,y,leaveWidth,39);
-            float matteHeight=y+51;
+            bool compactClosing = flow.Closing && !overflow;
+            At(exitTalk.Node,left+inside-leaveWidth,compactClosing ? 5 : y,leaveWidth,compactClosing ? 32 : 39);
+            float matteHeight=y+(compactClosing ? 8 : 51);
             At(talkBand,(width-cardWidth)*.5f,height-matteHeight-16,cardWidth,matteHeight);
             At(talkRule,0,0,cardWidth,1);
         }

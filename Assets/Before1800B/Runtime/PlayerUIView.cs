@@ -142,9 +142,16 @@ namespace Before1800.PartB
                 }
                 if (!input.isFocused && input.text != flow.Draft) input.SetTextWithoutNotify(flow.Draft ?? "");
                 Set(placeholder, "想对林说什么？");
-                input.interactable=!flow.Waiting;
-                foreach(var choice in talkChoices)choice.Button.interactable=!flow.Waiting;
-                Set(exitTalk.Label,flow.Waiting ? "先等一下   Esc" : "结束交谈   Esc");
+                bool showComposer = !flow.Closing;
+                if (input.gameObject.activeSelf != showComposer)
+                {
+                    input.gameObject.SetActive(showComposer);
+                    Active(send.Node, showComposer);
+                    changedLayout = true;
+                }
+                input.interactable=flow.CanSend;
+                foreach(var choice in talkChoices)choice.Button.interactable=!flow.Waiting && !flow.Closing;
+                Set(exitTalk.Label,flow.Closing ? "继续探索   Esc" : flow.Waiting ? "先等一下   Esc" : "结束交谈   Esc");
                 send.Button.interactable = flow.CanSend && !string.IsNullOrWhiteSpace(input.text);
                 send.Label.color = send.Button.interactable ? Cream : new Color32(169, 150, 137, 255);
                 UpdateChoices(talkChoices);
